@@ -9,12 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"sync"
 	"time"
 )
-
-func runApp() error {
-	return nil
-}
 
 // global command line parameters
 var runs *int
@@ -57,26 +54,20 @@ func main() {
 	}
 }
 
-func runCmdMinTimes(cmd *exec.Cmd, min int, measurement *string, done chan int, errs chan error) {
-
-	i := 0
-
-	for {
+func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *string, done chan int, errs chan error) {
+	defer wg.Done()
+	for i := 0; ; i++ {
 		// create a copy of the command
 		cmd := *cmd
 
 		start := time.Now()
 		err := cmd.Run()
 		elapsed := time.Since(start)
-		*measurement += strconv.FormatInt(elapsed.Nanoseconds(), 10)
-		*measurement += "\n"
 
 		if err != nil {
 			errs <- fmt.Errorf("Error running %v: %v", cmd.Args, err)
 			return
 		}
-
-		i++
 
 		// did the other cmd result in an error?
 		if len(errs) != 0 {
@@ -84,6 +75,15 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, measurement *string, done chan int, 
 		}
 
 		d := <-done
+
+		// check if the other application was running the whole time
+		if d == 2 {
+			// no
+			*measurement += "# "
+		}
+		*measurement += strconv.FormatInt(elapsed.Nanoseconds(), 10)
+		*measurement += "\n"
+
 		// did we run min times?
 		if i == min {
 			d++
@@ -127,8 +127,14 @@ func runPair(cPair [2]string, id int) error {
 	// used to return an error from the go-routines
 	errs := make(chan error, 2)
 
-	go runCmdMinTimes(cmd0, *runs, &measurements[0], done, errs)
-	runCmdMinTimes(cmd1, *runs, &measurements[1], done, errs)
+	// used to wait for the following 2 goroutines
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go runCmdMinTimes(cmd0, *runs, &wg, &measurements[0], done, errs)
+	go runCmdMinTimes(cmd1, *runs, &wg, &measurements[1], done, errs)
+
+	wg.Wait()
 
 	if len(errs) != 0 {
 		return <-errs
@@ -141,7 +147,7 @@ func runPair(cPair [2]string, id int) error {
 		}
 		defer measurementsFile.Close()
 
-		_, err = measurementsFile.WriteString("#nanoseconds\n" + s)
+		_, err = measurementsFile.WriteString("# runtime in nanoseconds of \"" + cPair[i] + "\" while \"" + cPair[(i+1)%2] + "\" is running\n" + s)
 		if err != nil {
 			return fmt.Errorf("Error while writing measurements file: %v", err)
 		}
