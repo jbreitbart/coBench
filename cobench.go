@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/montanaflynn/stats"
 )
 
 // global command line parameters
@@ -56,6 +58,9 @@ func main() {
 
 func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *string, done chan int, errs chan error) {
 	defer wg.Done()
+
+	var runtime []float64
+
 	for i := 0; ; i++ {
 		// create a copy of the command
 		cmd := *cmd
@@ -80,6 +85,8 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 		if d == 2 {
 			// no
 			*measurement += "# "
+		} else {
+			runtime = append(runtime, elapsed.Seconds())
 		}
 		*measurement += strconv.FormatInt(elapsed.Nanoseconds(), 10)
 		*measurement += "\n"
@@ -92,6 +99,16 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 
 		// both applications are done
 		if d == 2 {
+			mean, err := stats.Mean(runtime)
+			if err != nil {
+				mean = -1.0
+			}
+			stddev, err := stats.StandardDeviation(runtime)
+			if err != nil {
+				stddev = -1.0
+			}
+
+			fmt.Printf("%v \t %9.2f avg. runtime \t %1.6f std. dev.\n", cmd.Args, mean, stddev)
 			return
 		}
 	}
