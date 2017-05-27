@@ -51,9 +51,17 @@ func main() {
 }
 
 func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *string, done chan int, errs chan error) {
+	var runtime []float64
+
 	defer wg.Done()
 
-	var runtime []float64
+	defer func() {
+		mean, _ := stats.Mean(runtime)
+		stddev, _ := stats.StandardDeviation(runtime)
+		vari, _ := stats.Variance(runtime)
+
+		fmt.Printf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %v runs\n", cmd.Args, mean, stddev, vari, len(runtime))
+	}()
 
 	for i := 1; ; i++ {
 		// create a copy of the command
@@ -93,12 +101,6 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 
 		// both applications are done
 		if d == len(cpus) {
-			// ignore error, stats returns NaN
-			mean, _ := stats.Mean(runtime)
-			stddev, _ := stats.StandardDeviation(runtime)
-			vari, _ := stats.Variance(runtime)
-
-			fmt.Printf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %v runs\n", cmd.Args, mean, stddev, vari, i)
 			return
 		}
 	}
@@ -111,7 +113,7 @@ func runPair(cPair [2]string, id int) error {
 	// setup commands
 	for i, _ := range cmds {
 		if *hermitcore {
-			cmds[i] = exec.Command("taskset", "-c", cpus[i], "/bin/sh", "-c", cPair[i])
+			cmds[i] = exec.Command("numactl", "--physcpubind", cpus[i], "/bin/sh", "-c", cPair[i])
 			cmds[i].Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
 		} else {
 			cmds[i] = exec.Command("/bin/sh", "-c", cPair[i])
