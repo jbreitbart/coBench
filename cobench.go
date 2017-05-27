@@ -63,7 +63,7 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 
 	var runtime []float64
 
-	for i := 0; ; i++ {
+	for i := 1; ; i++ {
 		// create a copy of the command
 		cmd := *cmd
 
@@ -110,7 +110,7 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 				stddev = -1.0
 			}
 
-			fmt.Printf("%v \t %9.2f avg. runtime \t %1.6f std. dev.\n", cmd.Args, mean, stddev)
+			fmt.Printf("%v \t %9.2f avg. runtime \t %1.6f std. dev. \t %v runs\n", cmd.Args, mean, stddev, i)
 			return
 		}
 	}
