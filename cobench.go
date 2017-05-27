@@ -103,14 +103,18 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 		if d == 2 {
 			mean, err := stats.Mean(runtime)
 			if err != nil {
-				mean = -1.0
+				mean = -23.23
 			}
 			stddev, err := stats.StandardDeviation(runtime)
 			if err != nil {
-				stddev = -1.0
+				stddev = -23.23
+			}
+			vari, err := stats.Variance(runtime)
+			if err != nil {
+				vari = -23.23
 			}
 
-			fmt.Printf("%v \t %9.2f avg. runtime \t %1.6f std. dev. \t %v runs\n", cmd.Args, mean, stddev, i)
+			fmt.Printf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %v runs\n", cmd.Args, mean, stddev, vari, i)
 			return
 		}
 	}
