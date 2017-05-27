@@ -146,10 +146,6 @@ func runPair(cPair [2]string, id int) error {
 
 	wg.Wait()
 
-	if len(errs) != 0 {
-		return <-errs
-	}
-
 	for i, s := range measurements {
 		measurementsFile, err := os.Create(fmt.Sprintf("%v-%v.time", id, i))
 		if err != nil {
@@ -161,6 +157,10 @@ func runPair(cPair [2]string, id int) error {
 		if err != nil {
 			return fmt.Errorf("Error while writing measurements file: %v", err)
 		}
+	}
+
+	if len(errs) != 0 {
+		return <-errs
 	}
 
 	return nil
