@@ -17,20 +17,12 @@ import (
 
 // global command line parameters
 var runs *int
-var cpus0 *string
-var cpus1 *string
+var cpus [2]string
 var threads *string
 var hermitcore *bool
 
 func main() {
-	runs = flag.Int("arun", 2, "Number of times the applications are executed")
-	commandFile := flag.String("cmd", "cmd.txt", "Text file containing the commands to execute")
-	cpus0 = flag.String("cpus0", "0-4", "List of CPUs to be used for the 1st command")
-	cpus1 = flag.String("cpus1", "5-9", "List of CPUs to be used for the 2nd command")
-	threads = flag.String("threads", "5", "Number of threads to be used")
-	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
-	//resctrlPath := flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
-	flag.Parse()
+	commandFile := parseArgs()
 
 	commands, err := readCommands(*commandFile)
 	if err != nil {
@@ -100,7 +92,7 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 		done <- d
 
 		// both applications are done
-		if d == 2 {
+		if d == len(cpus) {
 			// ignore error, stats returns NaN
 			mean, _ := stats.Mean(runtime)
 			stddev, _ := stats.StandardDeviation(runtime)
@@ -113,50 +105,42 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 }
 
 func runPair(cPair [2]string, id int) error {
-	var cmd0 *exec.Cmd
-	var cmd1 *exec.Cmd
-
 	env := os.Environ()
-	if *hermitcore {
-		cmd0 = exec.Command("taskset", "-c", *cpus0, "/bin/sh", "-c", cPair[0])
-		cmd1 = exec.Command("taskset", "-c", *cpus1, "/bin/sh", "-c", cPair[1])
-		cmd0.Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
-		cmd1.Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
-	} else {
-		cmd0 = exec.Command("/bin/sh", "-c", cPair[0])
-		cmd1 = exec.Command("/bin/sh", "-c", cPair[1])
-		cmd0.Env = append(env, "GOMP_CPU_AFFINITY="+*cpus0, "OMP_NUM_THREADS="+*threads)
-		cmd1.Env = append(env, "GOMP_CPU_AFFINITY="+*cpus1, "OMP_NUM_THREADS="+*threads)
+
+	var cmds [len(cpus)]*exec.Cmd
+	// setup commands
+	for i, _ := range cmds {
+		if *hermitcore {
+			cmds[i] = exec.Command("taskset", "-c", cpus[i], "/bin/sh", "-c", cPair[i])
+			cmds[i].Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
+		} else {
+			cmds[i] = exec.Command("/bin/sh", "-c", cPair[i])
+			cmds[i].Env = append(env, "GOMP_CPU_AFFINITY="+cpus[i], "OMP_NUM_THREADS="+*threads)
+		}
+
+		outfile, err := os.Create(fmt.Sprintf("%v-%v.log", id, i))
+		if err != nil {
+			return fmt.Errorf("Error while creating file: %v", err)
+		}
+		defer outfile.Close()
+		cmds[i].Stdout = outfile
 	}
 
-	outfile0, err := os.Create(fmt.Sprintf("%v-0.log", id))
-	if err != nil {
-		return fmt.Errorf("Error while creating file: %v", err)
-	}
-	defer outfile0.Close()
-	outfile1, err := os.Create(fmt.Sprintf("%v-1.log", id))
-	if err != nil {
-		return fmt.Errorf("Error while creating file: %v", err)
-	}
-	defer outfile1.Close()
-
-	cmd0.Stdout = outfile0
-	cmd1.Stdout = outfile1
-
-	var measurements [2]string
+	var measurements [len(cmds)]string
 	// used to count how many apps have reached there min limit
 	done := make(chan int, 1)
 	done <- 0
 
 	// used to return an error from the go-routines
-	errs := make(chan error, 2)
+	errs := make(chan error, len(cmds))
 
 	// used to wait for the following 2 goroutines
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(len(cmds))
 
-	go runCmdMinTimes(cmd0, *runs, &wg, &measurements[0], done, errs)
-	go runCmdMinTimes(cmd1, *runs, &wg, &measurements[1], done, errs)
+	for i, c := range cmds {
+		go runCmdMinTimes(c, *runs, &wg, &measurements[i], done, errs)
+	}
 
 	wg.Wait()
 
@@ -212,4 +196,20 @@ func readCommands(filename string) ([]string, error) {
 	}
 
 	return commands, nil
+}
+
+func parseArgs() *string {
+	runs = flag.Int("arun", 2, "Number of times the applications are executed")
+	commandFile := flag.String("cmd", "cmd.txt", "Text file containing the commands to execute")
+	cpus0 := flag.String("cpus0", "0-4", "List of CPUs to be used for the 1st command")
+	cpus1 := flag.String("cpus1", "5-9", "List of CPUs to be used for the 2nd command")
+	threads = flag.String("threads", "5", "Number of threads to be used")
+	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
+	//resctrlPath := flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
+	flag.Parse()
+
+	cpus[0] = *cpus0
+	cpus[1] = *cpus1
+
+	return commandFile
 }
