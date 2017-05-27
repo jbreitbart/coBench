@@ -124,8 +124,8 @@ func runPair(cPair [2]string, id int) error {
 	if *hermitcore {
 		cmd0 = exec.Command("taskset", "-c", *cpus0, "/bin/sh", "-c", cPair[0])
 		cmd1 = exec.Command("taskset", "-c", *cpus1, "/bin/sh", "-c", cPair[1])
-		cmd0.Env = append(env, "HERMIT_CPUS="+*threads)
-		cmd1.Env = append(env, "HERMIT_CPUS="+*threads)
+		cmd0.Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
+		cmd1.Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
 	} else {
 		cmd0 = exec.Command("/bin/sh", "-c", cPair[0])
 		cmd1 = exec.Command("/bin/sh", "-c", cPair[1])
