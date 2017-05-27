@@ -76,7 +76,7 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 		d := <-done
 
 		// check if the other application was running the whole time
-		if d == 2 {
+		if d == len(cpus) {
 			// no
 			*measurement += "# "
 		} else {
