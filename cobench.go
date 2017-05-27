@@ -20,6 +20,7 @@ var runs *int
 var cpus0 *string
 var cpus1 *string
 var threads *string
+var hermitcore *bool
 
 func main() {
 	runs = flag.Int("arun", 2, "Number of times the applications are executed")
@@ -27,6 +28,7 @@ func main() {
 	cpus0 = flag.String("cpus0", "0-4", "List of CPUs to be used for the 1st command")
 	cpus1 = flag.String("cpus1", "5-9", "List of CPUs to be used for the 2nd command")
 	threads = flag.String("threads", "5", "Number of threads to be used")
+	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
 	//resctrlPath := flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
 	flag.Parse()
 
@@ -115,12 +117,21 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 }
 
 func runPair(cPair [2]string, id int) error {
-	cmd0 := exec.Command("/bin/sh", "-c", cPair[0])
-	cmd1 := exec.Command("/bin/sh", "-c", cPair[1])
+	var cmd0 *exec.Cmd
+	var cmd1 *exec.Cmd
 
 	env := os.Environ()
-	cmd0.Env = append(env, "GOMP_CPU_AFFINITY="+*cpus0, "OMP_NUM_THREADS="+*threads)
-	cmd1.Env = append(env, "GOMP_CPU_AFFINITY="+*cpus1, "OMP_NUM_THREADS="+*threads)
+	if *hermitcore {
+		cmd0 = exec.Command("taskset", "-c", *cpus0, "/bin/sh", "-c", cPair[0])
+		cmd1 = exec.Command("taskset", "-c", *cpus1, "/bin/sh", "-c", cPair[1])
+		cmd0.Env = append(env, "HERMIT_CPUS="+*threads)
+		cmd1.Env = append(env, "HERMIT_CPUS="+*threads)
+	} else {
+		cmd0 = exec.Command("/bin/sh", "-c", cPair[0])
+		cmd1 = exec.Command("/bin/sh", "-c", cPair[1])
+		cmd0.Env = append(env, "GOMP_CPU_AFFINITY="+*cpus0, "OMP_NUM_THREADS="+*threads)
+		cmd1.Env = append(env, "GOMP_CPU_AFFINITY="+*cpus1, "OMP_NUM_THREADS="+*threads)
+	}
 
 	outfile0, err := os.Create(fmt.Sprintf("%v-0.log", id))
 	if err != nil {
