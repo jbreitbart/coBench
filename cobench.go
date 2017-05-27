@@ -153,7 +153,7 @@ func runPair(cPair [2]string, id int) error {
 		}
 		defer measurementsFile.Close()
 
-		_, err = measurementsFile.WriteString("# runtime in nanoseconds of \"" + cPair[i] + "\" while \"" + cPair[(i+1)%2] + "\" is running\n" + s)
+		_, err = measurementsFile.WriteString("# runtime in nanoseconds of \"" + cPair[i] + "\" on CPUs " + cpus[i] + "while \"" + cPair[(i+1)%2] + "\" was running on cores " + cpus[(i+1)%len(cpus)] + "\n" + s)
 		if err != nil {
 			return fmt.Errorf("Error while writing measurements file: %v", err)
 		}
