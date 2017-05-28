@@ -129,7 +129,7 @@ func runPair(cPair [2]string, id int) error {
 	}
 
 	var measurements [len(cmds)]string
-	// used to count how many apps have reached there min limit
+	// used to count how many apps have reached their min limit
 	done := make(chan int, 1)
 	done <- 0
 
