@@ -112,9 +112,9 @@ func writeCATConfig(configs []int64) error {
 		defer file.Close()
 
 		// TODO hardcoded string
-		_, err = file.WriteString(fmt.Sprintf("L3:0=%x;1=%x", (uint)(configs[i]), (uint)(configs[i])))
+		_, err = file.WriteString(fmt.Sprintf("L3:0=%x;1=%x\n", (uint)(configs[i]), (uint)(configs[i])))
 		if err != nil {
-			return fmt.Errorf("CAT could write to schemata file: %v", err)
+			return fmt.Errorf("CAT could not write to schemata file: %v", err)
 		}
 	}
 	return nil
@@ -161,7 +161,7 @@ func main() {
 		for bits := minBits; bits <= numBits; bits += 2 {
 			bitsets := []int64{0, 0}
 			bitsets[0] = bit.SetFirstN(bitsets[0], bits)
-			bitsets[1] = bit.SetLastN(bitsets[1], bits, numBits)
+			bitsets[1] = bit.SetLastN(bitsets[1], bits, numBits-1)
 
 			err := runPair(c, i, bitsets)
 			if err != nil {
