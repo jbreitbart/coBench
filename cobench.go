@@ -8,10 +8,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/jbreitbart/coBench/bit"
 	"github.com/montanaflynn/stats"
 )
 
@@ -20,6 +22,81 @@ var runs *int
 var cpus [2]string
 var threads *string
 var hermitcore *bool
+var cat *bool
+var resctrlPath *string
+
+func swap(x, y uint64) (uint64, uint64) {
+	return y, x
+}
+
+func createDirsCAT(dirs []string) error {
+	for _, dir := range dirs {
+		err := os.Mkdir(dir, 0777)
+		if os.IsExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("CAT: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func setupCAT() error {
+	// todo hardcoded length
+	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
+
+	numbers := regexp.MustCompile("[0-9]+")
+
+	if err := createDirsCAT(dirs); err != nil {
+		return err
+	}
+
+	for i, cpu := range cpus {
+		cpuIDs := numbers.FindAllString(cpu, -1)
+		if len(cpuIDs)%2 != 0 {
+			return fmt.Errorf("Unsupported CPU list: %v", cpu)
+		}
+
+		var bitset int64
+
+		// loop over every pair
+		for i := 0; i < len(cpuIDs); i += 2 {
+			var start, end uint64
+			start, err := strconv.ParseUint(cpuIDs[i], 10, 64)
+			if err != nil {
+				return fmt.Errorf("Parse number: %v", start)
+			}
+			end, err = strconv.ParseUint(cpuIDs[i+1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("Parse number: %v", end)
+			}
+			if end < start {
+				start, end = swap(start, end)
+			}
+			for c := start; c <= end; c++ {
+				// TODO validate by max cpu size
+				bitset = bit.Set(bitset, c)
+			}
+		}
+
+		file, err := os.OpenFile(dirs[i]+"/cpus", os.O_WRONLY|os.O_TRUNC, 0777)
+		if err != nil {
+			return fmt.Errorf("CAT could not open cpus file: %v", err)
+		}
+		defer file.Close()
+
+		fmt.Printf("writing %v\n", bitset)
+
+		_, err = file.WriteString(fmt.Sprintf("%v", bitset))
+		if err != nil {
+			return fmt.Errorf("CAT could write to cpus file: %v", err)
+		}
+	}
+
+	return nil
+}
 
 func main() {
 	commandFile := parseArgs()
@@ -30,6 +107,13 @@ func main() {
 	}
 	if len(commands) < 2 {
 		log.Fatal("You must provide at least 2 commands")
+	}
+
+	if *cat {
+		err := setupCAT()
+		if err != nil {
+			log.Fatalf("%v\n", err)
+		}
 	}
 
 	commandPairs := generateCommandPairs(commands)
@@ -207,7 +291,8 @@ func parseArgs() *string {
 	cpus1 := flag.String("cpus1", "5-9", "List of CPUs to be used for the 2nd command")
 	threads = flag.String("threads", "5", "Number of threads to be used")
 	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
-	//resctrlPath := flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
+	cat = flag.Bool("cat", false, "Measure with all CAT settings")
+	resctrlPath = flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
 	flag.Parse()
 
 	cpus[0] = *cpus0
