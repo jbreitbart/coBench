@@ -44,7 +44,7 @@ func createDirsCAT(dirs []string) error {
 }
 
 func setupCAT() error {
-	// todo hardcoded length
+	// TODO hardcoded length
 	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
 
 	numbers := regexp.MustCompile("[0-9]+")
@@ -87,14 +87,36 @@ func setupCAT() error {
 		}
 		defer file.Close()
 
-		fmt.Printf("writing %v\n", bitset)
-
 		_, err = file.WriteString(fmt.Sprintf("%v", bitset))
 		if err != nil {
 			return fmt.Errorf("CAT could write to cpus file: %v", err)
 		}
 	}
 
+	return nil
+}
+
+func writeCATConfig(configs []int64) error {
+	// TODO duplicated line
+	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
+
+	if len(dirs) != len(configs) {
+		return fmt.Errorf("Internal error")
+	}
+
+	for i, dir := range dirs {
+		file, err := os.OpenFile(dir+"/schemata", os.O_WRONLY|os.O_TRUNC, 0777)
+		if err != nil {
+			return fmt.Errorf("CAT could not open cpus file: %v", err)
+		}
+		defer file.Close()
+
+		// TODO hardcoded string
+		_, err = file.WriteString(fmt.Sprintf("L3:0=%x;1=%x", (uint)(configs[i]), (uint)(configs[i])))
+		if err != nil {
+			return fmt.Errorf("CAT could write to schemata file: %v", err)
+		}
+	}
 	return nil
 }
 
@@ -109,11 +131,20 @@ func main() {
 		log.Fatal("You must provide at least 2 commands")
 	}
 
+	var minBits int
+	var numBits int
+
 	if *cat {
 		err := setupCAT()
 		if err != nil {
 			log.Fatalf("%v\n", err)
 		}
+		// TODO read from resctrlPath
+		minBits = 2
+		numBits = 20
+	} else {
+		minBits = 0
+		numBits = 0
 	}
 
 	commandPairs := generateCommandPairs(commands)
@@ -126,10 +157,16 @@ func main() {
 	for i, c := range commandPairs {
 		fmt.Printf("Running pair %v\n", i)
 		fmt.Println(c)
-		// TODO run for every combination of CAT setup
-		err := runPair(c, i)
-		if err != nil {
-			log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
+		// TODO max chunk size configurable
+		for bits := minBits; bits <= numBits; bits += 2 {
+			bitsets := []int64{0, 0}
+			bitsets[0] = bit.SetFirstN(bitsets[0], bits)
+			bitsets[1] = bit.SetLastN(bitsets[1], bits, numBits)
+
+			err := runPair(c, i, bitsets)
+			if err != nil {
+				log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
+			}
 		}
 	}
 }
@@ -190,8 +227,14 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 	}
 }
 
-func runPair(cPair [2]string, id int) error {
+func runPair(cPair [2]string, id int, catConfig []int64) error {
 	env := os.Environ()
+
+	if *cat {
+		if err := writeCATConfig(catConfig); err != nil {
+			return fmt.Errorf("Error while writting CAT config: %v", err)
+		}
+	}
 
 	var cmds [len(cpus)]*exec.Cmd
 	// setup commands
@@ -204,7 +247,7 @@ func runPair(cPair [2]string, id int) error {
 			cmds[i].Env = append(env, "GOMP_CPU_AFFINITY="+cpus[i], "OMP_NUM_THREADS="+*threads)
 		}
 
-		outfile, err := os.Create(fmt.Sprintf("%v-%v.log", id, i))
+		outfile, err := os.Create(fmt.Sprintf("%v-%v-%x.log", id, i, catConfig[i]))
 		if err != nil {
 			return fmt.Errorf("Error while creating file: %v", err)
 		}
@@ -237,7 +280,14 @@ func runPair(cPair [2]string, id int) error {
 		}
 		defer measurementsFile.Close()
 
-		_, err = measurementsFile.WriteString("# runtime in nanoseconds of \"" + cPair[i] + "\" on CPUs " + cpus[i] + "while \"" + cPair[(i+1)%2] + "\" was running on cores " + cpus[(i+1)%len(cpus)] + "\n" + s)
+		out := "# runtime in nanoseconds of \"" + cPair[i] + "\" on CPUs " + cpus[i] + "while \"" + cPair[(i+1)%2] + "\" was running on cores " + cpus[(i+1)%len(cpus)]
+		if *cat {
+			out += fmt.Sprintf(" with CAT %x ", catConfig[i])
+		}
+		out += "\n"
+		out += s
+
+		_, err = measurementsFile.WriteString(out)
 		if err != nil {
 			return fmt.Errorf("Error while writing measurements file: %v", err)
 		}
