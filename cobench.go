@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jbreitbart/coBench/bit"
 	"github.com/montanaflynn/stats"
 )
 
@@ -19,10 +18,10 @@ var runs *int
 var cpus [2]string
 var threads *string
 var hermitcore *bool
-var resctrlPath *string
 
+var resctrlPath *string
 var cat *bool
-var catBitChunk *int
+var catBitChunk *uint64
 
 func main() {
 	commandFile := parseArgs()
@@ -35,8 +34,8 @@ func main() {
 		log.Fatal("You must provide at least 2 commands")
 	}
 
-	minBits := 0
-	numBits := 0
+	minBits := uint64(0)
+	numBits := uint64(0)
 
 	if *cat {
 		var err error
@@ -72,21 +71,7 @@ func main() {
 	}
 }
 
-func generateCatConfigs(minBits int, numBits int) [][]int64 {
-	pairs := make([][]int64, 0)
-
-	if *cat {
-		for bits := minBits; bits <= numBits-minBits; bits += *catBitChunk {
-			pairs = append(pairs, []int64{bit.SetFirstN(0, bits), bit.SetLastN(0, bits, numBits)})
-		}
-	}
-
-	pairs = append(pairs, []int64{bit.SetFirstN(0, numBits), bit.SetFirstN(0, numBits)})
-
-	return pairs
-}
-
-func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time.Duration) error {
+func processRuntime(id int, cPair [2]string, catMasks []uint64, runtimes [][]time.Duration) error {
 
 	statsFile, err := os.Create("stats")
 	if err == nil {
@@ -123,7 +108,7 @@ func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time
 
 		s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %3d runs", cPair[i], mean, stddev, vari, len(runtime))
 		if *cat {
-			s += fmt.Sprintf("\t %6x CAT", (uint)(catMasks[i]))
+			s += fmt.Sprintf("\t %6x CAT", catMasks[i])
 		} else {
 			s += "\t           "
 		}
@@ -132,7 +117,7 @@ func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time
 
 		statsFile.WriteString(fmt.Sprintf("%v \t %v \t %v \t %v \t %v", cPair[i], mean, stddev, vari, len(runtime)))
 		if *cat {
-			statsFile.WriteString(fmt.Sprintf("\t %6x", (uint)(catMasks[i])))
+			statsFile.WriteString(fmt.Sprintf("\t %6x", catMasks[i]))
 		} else {
 			statsFile.WriteString("\t       ")
 		}
@@ -143,7 +128,7 @@ func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time
 	for i, runtime := range runtimes {
 		filename := fmt.Sprintf("%v-%v", id, i)
 		if *cat {
-			filename += fmt.Sprintf("-%x", (uint)(catMasks[i]))
+			filename += fmt.Sprintf("-%x", catMasks[i])
 		}
 		filename += ".time"
 		measurementsFile, err := os.Create(filename)
@@ -214,7 +199,7 @@ func parseArgs() *string {
 	threads = flag.String("threads", "5", "Number of threads to be used")
 
 	cat = flag.Bool("cat", false, "Measure with all CAT settings")
-	catBitChunk = flag.Int("catChunk", 2, "Bits changed from one run to the next")
+	catBitChunk = flag.Uint64("catChunk", 2, "Bits changed from one run to the next")
 	resctrlPath = flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
 
 	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")

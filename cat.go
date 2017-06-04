@@ -9,6 +9,21 @@ import (
 	"github.com/jbreitbart/coBench/bit"
 )
 
+func generateCatConfigs(minBits uint64, numBits uint64) [][]uint64 {
+	pairs := make([][]uint64, 0)
+
+	if *cat {
+		for bits := minBits; bits <= numBits-minBits; bits += *catBitChunk {
+			pairs = append(pairs, []uint64{bit.SetFirstN(0, bits), bit.SetLastN(0, bits, numBits)})
+		}
+	}
+
+	// Added as a last entry, so that after programm execution cat is disabled
+	pairs = append(pairs, []uint64{bit.SetFirstN(0, numBits), bit.SetFirstN(0, numBits)})
+
+	return pairs
+}
+
 func createDirsCAT(dirs []string) error {
 	for _, dir := range dirs {
 		err := os.Mkdir(dir, 0777)
@@ -23,7 +38,7 @@ func createDirsCAT(dirs []string) error {
 	return nil
 }
 
-func setupCAT() (minBits int, numBits int, err error) {
+func setupCAT() (minBits uint64, numBits uint64, err error) {
 	// TODO read from resctrlPath
 	minBits = 2
 	numBits = 20
@@ -44,7 +59,7 @@ func setupCAT() (minBits int, numBits int, err error) {
 			return
 		}
 
-		var bitset int64
+		var bitset uint64
 
 		// loop over every pair
 		for i := 0; i < len(cpuIDs); i += 2 {
@@ -87,7 +102,7 @@ func setupCAT() (minBits int, numBits int, err error) {
 	return
 }
 
-func writeCATConfig(configs []int64) error {
+func writeCATConfig(configs []uint64) error {
 	// TODO duplicated line
 	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
 
@@ -103,7 +118,7 @@ func writeCATConfig(configs []int64) error {
 		defer file.Close()
 
 		// TODO hardcoded string
-		_, err = file.WriteString(fmt.Sprintf("L3:0=%x;1=%x\n", (uint)(configs[i]), (uint)(configs[i])))
+		_, err = file.WriteString(fmt.Sprintf("L3:0=%x;1=%x\n", configs[i], configs[i]))
 		if err != nil {
 			return fmt.Errorf("CAT could not write to schemata file: %v", err)
 		}

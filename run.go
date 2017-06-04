@@ -9,7 +9,7 @@ import (
 )
 
 // TODO remove id
-func runPair(cPair [2]string, id int, catConfig []int64) ([][]time.Duration, error) {
+func runPair(cPair [2]string, id int, catConfig []uint64) ([][]time.Duration, error) {
 	env := os.Environ()
 
 	if *cat {
@@ -31,7 +31,7 @@ func runPair(cPair [2]string, id int, catConfig []int64) ([][]time.Duration, err
 
 		filename := fmt.Sprintf("%v-%v", id, i)
 		if *cat {
-			filename += fmt.Sprintf("-%x", (uint)(catConfig[i]))
+			filename += fmt.Sprintf("-%x", catConfig[i])
 		}
 		filename += ".log"
 		outfile, err := os.Create(filename)
