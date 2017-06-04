@@ -23,20 +23,25 @@ func createDirsCAT(dirs []string) error {
 	return nil
 }
 
-func setupCAT() error {
+func setupCAT() (minBits int, numBits int, err error) {
+	// TODO read from resctrlPath
+	minBits = 2
+	numBits = 20
+
 	// TODO hardcoded length
 	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
 
 	numbers := regexp.MustCompile("[0-9]+")
 
-	if err := createDirsCAT(dirs); err != nil {
-		return err
+	if err = createDirsCAT(dirs); err != nil {
+		return
 	}
 
 	for i, cpu := range cpus {
 		cpuIDs := numbers.FindAllString(cpu, -1)
 		if len(cpuIDs)%2 != 0 {
-			return fmt.Errorf("Unsupported CPU list: %v", cpu)
+			err = fmt.Errorf("Unsupported CPU list: %v", cpu)
+			return
 		}
 
 		var bitset int64
@@ -44,13 +49,15 @@ func setupCAT() error {
 		// loop over every pair
 		for i := 0; i < len(cpuIDs); i += 2 {
 			var start, end uint64
-			start, err := strconv.ParseUint(cpuIDs[i], 10, 64)
+			start, err = strconv.ParseUint(cpuIDs[i], 10, 64)
 			if err != nil {
-				return fmt.Errorf("Parse number: %v", start)
+				err = fmt.Errorf("Parse number: %v", start)
+				return
 			}
 			end, err = strconv.ParseUint(cpuIDs[i+1], 10, 64)
 			if err != nil {
-				return fmt.Errorf("Parse number: %v", end)
+				err = fmt.Errorf("Parse number: %v", end)
+				return
 			}
 			if end < start {
 				start, end = end, start
@@ -61,19 +68,23 @@ func setupCAT() error {
 			}
 		}
 
-		file, err := os.OpenFile(dirs[i]+"/cpus", os.O_WRONLY|os.O_TRUNC, 0777)
+		var file *os.File
+
+		file, err = os.OpenFile(dirs[i]+"/cpus", os.O_WRONLY|os.O_TRUNC, 0777)
 		if err != nil {
-			return fmt.Errorf("CAT could not open cpus file: %v", err)
+			err = fmt.Errorf("CAT could not open cpus file: %v", err)
+			return
 		}
 		defer file.Close()
 
 		_, err = file.WriteString(fmt.Sprintf("%v", bitset))
 		if err != nil {
-			return fmt.Errorf("CAT could write to cpus file: %v", err)
+			err = fmt.Errorf("CAT could write to cpus file: %v", err)
+			return
 		}
 	}
 
-	return nil
+	return
 }
 
 func writeCATConfig(configs []int64) error {

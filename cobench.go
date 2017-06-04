@@ -41,13 +41,11 @@ func main() {
 	var numBits int
 
 	if *cat {
-		err := setupCAT()
+		var err error
+		minBits, numBits, err = setupCAT()
 		if err != nil {
 			log.Fatalf("%v\n", err)
 		}
-		// TODO read from resctrlPath
-		minBits = 2
-		numBits = 20
 	} else {
 		minBits = 0
 		numBits = 0
