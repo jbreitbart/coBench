@@ -75,13 +75,13 @@ func main() {
 func generateCatConfigs(minBits int, numBits int) [][]int64 {
 	pairs := make([][]int64, 0)
 
-	pairs = append(pairs, []int64{bit.SetFirstN(0, numBits), bit.SetFirstN(0, numBits)})
-
 	if *cat {
 		for bits := minBits; bits <= numBits-minBits; bits += *catBitChunk {
 			pairs = append(pairs, []int64{bit.SetFirstN(0, bits), bit.SetLastN(0, bits, numBits)})
 		}
 	}
+
+	pairs = append(pairs, []int64{bit.SetFirstN(0, numBits), bit.SetFirstN(0, numBits)})
 
 	return pairs
 }
