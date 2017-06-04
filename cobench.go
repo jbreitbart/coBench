@@ -87,6 +87,29 @@ func generateCatConfigs(minBits int, numBits int) [][]int64 {
 }
 
 func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time.Duration) error {
+
+	statsFile, err := os.Create("stats")
+	if err == nil {
+		defer statsFile.Close()
+
+		// write header
+		statsFile.WriteString("cmd \t avg. runtime (s) \t std. dev. \t variance \t runs")
+		if *cat {
+			statsFile.WriteString("\t CAT")
+		}
+		statsFile.WriteString("\t nom. perf\n")
+	} else {
+		if os.IsExist(err) {
+			statsFile, err = os.OpenFile("stats", os.O_WRONLY|os.O_APPEND, 0777)
+			if err != nil {
+				return fmt.Errorf("Error while opening file: %v", err)
+			}
+			defer statsFile.Close()
+		} else {
+			return fmt.Errorf("Error while creating file: %v", err)
+		}
+	}
+
 	for i, runtime := range runtimes {
 		var runtimeSeconds []float64
 		for _, r := range runtime {
@@ -104,7 +127,12 @@ func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time
 		}
 		s += fmt.Sprintf("\t %1.6f nom. perf", (float64)(len(runtime))/runtimeSum)
 		fmt.Println(s)
-		// TODO write s to file
+
+		statsFile.WriteString(fmt.Sprintf("%v \t %v \t %v \t %v \t %v", cPair[i], mean, stddev, vari, len(runtime)))
+		if *cat {
+			statsFile.WriteString(fmt.Sprintf("\t %6x", (uint)(catMasks[i])))
+		}
+		statsFile.WriteString(fmt.Sprintf("\t %v\n", (float64)(len(runtime))/runtimeSum))
 	}
 	fmt.Print("\n")
 
