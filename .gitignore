@@ -27,3 +27,4 @@ coBench
 cmd.txt
 *.log
 *.time
+res/
