@@ -124,6 +124,8 @@ func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time
 		s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %3d runs", cPair[i], mean, stddev, vari, len(runtime))
 		if *cat {
 			s += fmt.Sprintf("\t %6x CAT", (uint)(catMasks[i]))
+		} else {
+			s += "\t           "
 		}
 		s += fmt.Sprintf("\t %1.6f nom. perf", (float64)(len(runtime))/runtimeSum)
 		fmt.Println(s)
@@ -131,6 +133,8 @@ func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time
 		statsFile.WriteString(fmt.Sprintf("%v \t %v \t %v \t %v \t %v", cPair[i], mean, stddev, vari, len(runtime)))
 		if *cat {
 			statsFile.WriteString(fmt.Sprintf("\t %6x", (uint)(catMasks[i])))
+		} else {
+			statsFile.WriteString("\t       ")
 		}
 		statsFile.WriteString(fmt.Sprintf("\t %v\n", (float64)(len(runtime))/runtimeSum))
 	}
