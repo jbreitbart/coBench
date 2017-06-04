@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/jbreitbart/coBench/bit"
@@ -37,8 +35,8 @@ func main() {
 		log.Fatal("You must provide at least 2 commands")
 	}
 
-	var minBits int
-	var numBits int
+	minBits := 0
+	numBits := 0
 
 	if *cat {
 		var err error
@@ -46,12 +44,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("%v\n", err)
 		}
-	} else {
-		minBits = 0
-		numBits = 0
 	}
 
 	commandPairs := generateCommandPairs(commands)
+	catPairs := generateCatConfigs(minBits, numBits)
 
 	fmt.Println("Executing the following command pairs:")
 	for _, c := range commandPairs {
@@ -61,130 +57,64 @@ func main() {
 	for i, c := range commandPairs {
 		fmt.Printf("Running pair %v\n", i)
 		fmt.Println(c)
-		for bits := minBits; bits <= numBits-minBits; bits += *catBitChunk {
-			bitsets := []int64{0, 0}
-			bitsets[0] = bit.SetFirstN(bitsets[0], bits)
-			bitsets[1] = bit.SetLastN(bitsets[1], bits, numBits-1)
 
-			err := runPair(c, i, bitsets)
+		for _, catConfig := range catPairs {
+			runtimes, err := runPair(c, i, catConfig)
 			if err != nil {
 				log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
+			}
+
+			err = processRuntime(i, c, catConfig, runtimes)
+			if err != nil {
+				log.Fatalf("Error processing runtime: %v", err)
 			}
 		}
 	}
 }
 
-func runCmdMinTimes(cmd *exec.Cmd, min int, catMask int64, wg *sync.WaitGroup, measurement *string, done chan int, errs chan error) {
-	var runtime []float64
+func generateCatConfigs(minBits int, numBits int) [][]int64 {
+	pairs := make([][]int64, 0)
 
-	defer wg.Done()
-
-	defer func() {
-		mean, _ := stats.Mean(runtime)
-		stddev, _ := stats.StandardDeviation(runtime)
-		vari, _ := stats.Variance(runtime)
-		runtimeSum, _ := stats.Sum(runtime)
-
-		s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %v runs", cmd.Args, mean, stddev, vari, len(runtime))
-		if *cat {
-			s += fmt.Sprintf("\t %x", (uint)(catMask))
-		}
-		s += fmt.Sprintf("\t %1.6f", (float64)(len(runtime))/runtimeSum)
-		s += "\n"
-		fmt.Println(s)
-	}()
-
-	for i := 1; ; i++ {
-		// create a copy of the command
-		cmd := *cmd
-
-		start := time.Now()
-		err := cmd.Run()
-		elapsed := time.Since(start)
-
-		if err != nil {
-			errs <- fmt.Errorf("Error running %v: %v", cmd.Args, err)
-			return
-		}
-
-		// did the other cmd result in an error?
-		if len(errs) != 0 {
-			return
-		}
-
-		d := <-done
-
-		// check if the other application was running the whole time
-		if d == len(cpus) {
-			// no
-			*measurement += "# "
-		} else {
-			runtime = append(runtime, elapsed.Seconds())
-		}
-		*measurement += strconv.FormatInt(elapsed.Nanoseconds(), 10)
-		*measurement += "\n"
-
-		// did we run min times?
-		if i == min {
-			d++
-		}
-		done <- d
-
-		// both applications are done
-		if d == len(cpus) {
-			return
-		}
-	}
-}
-
-func runPair(cPair [2]string, id int, catConfig []int64) error {
-	env := os.Environ()
+	pairs = append(pairs, []int64{bit.SetFirstN(0, numBits), bit.SetFirstN(0, numBits)})
 
 	if *cat {
-		if err := writeCATConfig(catConfig); err != nil {
-			return fmt.Errorf("Error while writting CAT config: %v", err)
+		for bits := minBits; bits <= numBits-minBits; bits += *catBitChunk {
+			pairs = append(pairs, []int64{bit.SetFirstN(0, bits), bit.SetLastN(0, bits, numBits)})
 		}
 	}
 
-	var cmds [len(cpus)]*exec.Cmd
-	// setup commands
-	for i, _ := range cmds {
-		if *hermitcore {
-			cmds[i] = exec.Command("numactl", "--physcpubind", cpus[i], "/bin/sh", "-c", cPair[i])
-			cmds[i].Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
-		} else {
-			cmds[i] = exec.Command("/bin/sh", "-c", cPair[i])
-			cmds[i].Env = append(env, "GOMP_CPU_AFFINITY="+cpus[i], "OMP_NUM_THREADS="+*threads)
+	return pairs
+}
+
+func processRuntime(id int, cPair [2]string, catMasks []int64, runtimes [][]time.Duration) error {
+	for i, runtime := range runtimes {
+		var runtimeSeconds []float64
+		for _, r := range runtime {
+			runtimeSeconds = append(runtimeSeconds, r.Seconds())
 		}
 
-		outfile, err := os.Create(fmt.Sprintf("%v-%v-%x.log", id, i, catConfig[i]))
-		if err != nil {
-			return fmt.Errorf("Error while creating file: %v", err)
+		mean, _ := stats.Mean(runtimeSeconds)
+		stddev, _ := stats.StandardDeviation(runtimeSeconds)
+		vari, _ := stats.Variance(runtimeSeconds)
+		runtimeSum, _ := stats.Sum(runtimeSeconds)
+
+		s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %3d runs", cPair[i], mean, stddev, vari, len(runtime))
+		if *cat {
+			s += fmt.Sprintf("\t %6x CAT", (uint)(catMasks[i]))
 		}
-		defer outfile.Close()
-		cmds[i].Stdout = outfile
+		s += fmt.Sprintf("\t %1.6f nom. perf", (float64)(len(runtime))/runtimeSum)
+		fmt.Println(s)
+		// TODO write s to file
 	}
+	fmt.Print("\n")
 
-	var measurements [len(cmds)]string
-	// used to count how many apps have reached their min limit
-	done := make(chan int, 1)
-	done <- 0
-
-	// used to return an error from the go-routines
-	errs := make(chan error, len(cmds))
-
-	// used to wait for the following 2 goroutines
-	var wg sync.WaitGroup
-	wg.Add(len(cmds))
-
-	for i, c := range cmds {
-		go runCmdMinTimes(c, *runs, catConfig[i], &wg, &measurements[i], done, errs)
-	}
-
-	wg.Wait()
-
-	for i, s := range measurements {
-		measurementsFile, err := os.Create(fmt.Sprintf("%v-%v.time", id, i))
+	for i, runtime := range runtimes {
+		filename := fmt.Sprintf("%v-%v", id, i)
+		if *cat {
+			filename += fmt.Sprintf("-%x", (uint)(catMasks[i]))
+		}
+		filename += ".time"
+		measurementsFile, err := os.Create(filename)
 		if err != nil {
 			return fmt.Errorf("Error while creating file: %v", err)
 		}
@@ -192,19 +122,18 @@ func runPair(cPair [2]string, id int, catConfig []int64) error {
 
 		out := "# runtime in nanoseconds of \"" + cPair[i] + "\" on CPUs " + cpus[i] + "while \"" + cPair[(i+1)%2] + "\" was running on cores " + cpus[(i+1)%len(cpus)]
 		if *cat {
-			out += fmt.Sprintf(" with CAT %x ", catConfig[i])
+			out += fmt.Sprintf(" with CAT %6x ", catMasks[i])
 		}
 		out += "\n"
-		out += s
+		for _, r := range runtime {
+			out += strconv.FormatInt(r.Nanoseconds(), 10)
+			out += "\n"
+		}
 
 		_, err = measurementsFile.WriteString(out)
 		if err != nil {
 			return fmt.Errorf("Error while writing measurements file: %v", err)
 		}
-	}
-
-	if len(errs) != 0 {
-		return <-errs
 	}
 
 	return nil

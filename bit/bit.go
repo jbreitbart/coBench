@@ -30,7 +30,7 @@ func SetFirstN(val int64, n int) int64 {
 
 func SetLastN(val int64, n int, size int) int64 {
 	// TODO error if n >64, size >64; <0
-	for i := size; i >= n; i-- {
+	for i := size - 1; i >= n; i-- {
 		val = Set(val, (uint64)(i))
 	}
 	return val
