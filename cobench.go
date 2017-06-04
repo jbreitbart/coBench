@@ -83,11 +83,13 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, catMask int64, wg *sync.WaitGroup, m
 		mean, _ := stats.Mean(runtime)
 		stddev, _ := stats.StandardDeviation(runtime)
 		vari, _ := stats.Variance(runtime)
+		runtimeSum, _ := stats.Sum(runtime)
 
 		s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %v runs", cmd.Args, mean, stddev, vari, len(runtime))
 		if *cat {
 			s += fmt.Sprintf("\t %x", (uint)(catMask))
 		}
+		s += fmt.Sprintf("\t %1.6f", (float64)(len(runtime))/runtimeSum)
 		s += "\n"
 		fmt.Println(s)
 	}()
