@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -22,103 +21,10 @@ var runs *int
 var cpus [2]string
 var threads *string
 var hermitcore *bool
-var cat *bool
 var resctrlPath *string
 
-func swap(x, y uint64) (uint64, uint64) {
-	return y, x
-}
-
-func createDirsCAT(dirs []string) error {
-	for _, dir := range dirs {
-		err := os.Mkdir(dir, 0777)
-		if os.IsExist(err) {
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("CAT: %v", err)
-		}
-	}
-
-	return nil
-}
-
-func setupCAT() error {
-	// TODO hardcoded length
-	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
-
-	numbers := regexp.MustCompile("[0-9]+")
-
-	if err := createDirsCAT(dirs); err != nil {
-		return err
-	}
-
-	for i, cpu := range cpus {
-		cpuIDs := numbers.FindAllString(cpu, -1)
-		if len(cpuIDs)%2 != 0 {
-			return fmt.Errorf("Unsupported CPU list: %v", cpu)
-		}
-
-		var bitset int64
-
-		// loop over every pair
-		for i := 0; i < len(cpuIDs); i += 2 {
-			var start, end uint64
-			start, err := strconv.ParseUint(cpuIDs[i], 10, 64)
-			if err != nil {
-				return fmt.Errorf("Parse number: %v", start)
-			}
-			end, err = strconv.ParseUint(cpuIDs[i+1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("Parse number: %v", end)
-			}
-			if end < start {
-				start, end = swap(start, end)
-			}
-			for c := start; c <= end; c++ {
-				// TODO validate by max cpu size
-				bitset = bit.Set(bitset, c)
-			}
-		}
-
-		file, err := os.OpenFile(dirs[i]+"/cpus", os.O_WRONLY|os.O_TRUNC, 0777)
-		if err != nil {
-			return fmt.Errorf("CAT could not open cpus file: %v", err)
-		}
-		defer file.Close()
-
-		_, err = file.WriteString(fmt.Sprintf("%v", bitset))
-		if err != nil {
-			return fmt.Errorf("CAT could write to cpus file: %v", err)
-		}
-	}
-
-	return nil
-}
-
-func writeCATConfig(configs []int64) error {
-	// TODO duplicated line
-	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
-
-	if len(dirs) != len(configs) {
-		return fmt.Errorf("Internal error")
-	}
-
-	for i, dir := range dirs {
-		file, err := os.OpenFile(dir+"/schemata", os.O_WRONLY|os.O_TRUNC, 0777)
-		if err != nil {
-			return fmt.Errorf("CAT could not open cpus file: %v", err)
-		}
-		defer file.Close()
-
-		// TODO hardcoded string
-		_, err = file.WriteString(fmt.Sprintf("L3:0=%x;1=%x\n", (uint)(configs[i]), (uint)(configs[i])))
-		if err != nil {
-			return fmt.Errorf("CAT could not write to schemata file: %v", err)
-		}
-	}
-	return nil
-}
+var cat *bool
+var catBitChunk *int
 
 func main() {
 	commandFile := parseArgs()
@@ -157,8 +63,7 @@ func main() {
 	for i, c := range commandPairs {
 		fmt.Printf("Running pair %v\n", i)
 		fmt.Println(c)
-		// TODO max chunk size configurable
-		for bits := minBits; bits <= numBits; bits += 2 {
+		for bits := minBits; bits <= numBits-minBits; bits += *catBitChunk {
 			bitsets := []int64{0, 0}
 			bitsets[0] = bit.SetFirstN(bitsets[0], bits)
 			bitsets[1] = bit.SetLastN(bitsets[1], bits, numBits-1)
@@ -171,7 +76,7 @@ func main() {
 	}
 }
 
-func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *string, done chan int, errs chan error) {
+func runCmdMinTimes(cmd *exec.Cmd, min int, catMask int64, wg *sync.WaitGroup, measurement *string, done chan int, errs chan error) {
 	var runtime []float64
 
 	defer wg.Done()
@@ -181,7 +86,12 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, measurement *str
 		stddev, _ := stats.StandardDeviation(runtime)
 		vari, _ := stats.Variance(runtime)
 
-		fmt.Printf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %v runs\n", cmd.Args, mean, stddev, vari, len(runtime))
+		s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %v runs", cmd.Args, mean, stddev, vari, len(runtime))
+		if *cat {
+			s += fmt.Sprintf("\t %x", (uint)(catMask))
+		}
+		s += "\n"
+		fmt.Println(s)
 	}()
 
 	for i := 1; ; i++ {
@@ -268,7 +178,7 @@ func runPair(cPair [2]string, id int, catConfig []int64) error {
 	wg.Add(len(cmds))
 
 	for i, c := range cmds {
-		go runCmdMinTimes(c, *runs, &wg, &measurements[i], done, errs)
+		go runCmdMinTimes(c, *runs, catConfig[i], &wg, &measurements[i], done, errs)
 	}
 
 	wg.Wait()
@@ -335,15 +245,29 @@ func readCommands(filename string) ([]string, error) {
 }
 
 func parseArgs() *string {
-	runs = flag.Int("arun", 2, "Number of times the applications are executed")
+	runs = flag.Int("runs", 2, "Number of times the applications are executed")
 	commandFile := flag.String("cmd", "cmd.txt", "Text file containing the commands to execute")
+
 	cpus0 := flag.String("cpus0", "0-4", "List of CPUs to be used for the 1st command")
 	cpus1 := flag.String("cpus1", "5-9", "List of CPUs to be used for the 2nd command")
 	threads = flag.String("threads", "5", "Number of threads to be used")
-	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
+
 	cat = flag.Bool("cat", false, "Measure with all CAT settings")
+	catBitChunk = flag.Int("catChunk", 2, "Bits changed from one run to the next")
 	resctrlPath = flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
+
+	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
+
 	flag.Parse()
+
+	if *runs < 1 {
+		fmt.Println("runs must be > 0")
+		os.Exit(0)
+	}
+	if *catBitChunk < 1 {
+		fmt.Println("catChunk must be > 0")
+		os.Exit(0)
+	}
 
 	cpus[0] = *cpus0
 	cpus[1] = *cpus1
