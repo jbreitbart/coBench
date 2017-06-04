@@ -38,6 +38,24 @@ func createDirsCAT(dirs []string) error {
 	return nil
 }
 
+func removeDirsCAT(dirs []string) error {
+	for _, dir := range dirs {
+		err := os.Remove(dir)
+		if err != nil {
+			return fmt.Errorf("Cannot remove dir %v: %v", dir, err)
+		}
+	}
+
+	return nil
+}
+
+func resetCAT() error {
+	// TODO duplicated line
+	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
+
+	return removeDirsCAT(dirs)
+}
+
 func setupCAT() (minBits uint64, numBits uint64, err error) {
 	// TODO read from resctrlPath
 	minBits = 2

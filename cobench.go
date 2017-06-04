@@ -43,6 +43,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("%v\n", err)
 		}
+		defer resetCAT()
 	}
 
 	commandPairs := generateCommandPairs(commands)
