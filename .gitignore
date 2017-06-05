@@ -28,3 +28,4 @@ cmd.txt
 *.log
 *.time
 res/
+stats
