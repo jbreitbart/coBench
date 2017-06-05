@@ -74,8 +74,13 @@ func main() {
 
 func processRuntime(id int, cPair [2]string, catMasks []uint64, runtimes [][]time.Duration) error {
 
-	statsFile, err := os.Create("stats")
-	if err == nil {
+	var statsFile *os.File
+	if _, err := os.Stat("stats"); os.IsNotExist(err) {
+		// stats does not exist
+		statsFile, err = os.Create("stats")
+		if err != nil {
+			return fmt.Errorf("Error while creating file: %v", err)
+		}
 		defer statsFile.Close()
 
 		// write header
@@ -85,15 +90,11 @@ func processRuntime(id int, cPair [2]string, catMasks []uint64, runtimes [][]tim
 		}
 		statsFile.WriteString("\t nom. perf\n")
 	} else {
-		if os.IsExist(err) {
-			statsFile, err = os.OpenFile("stats", os.O_WRONLY|os.O_APPEND, 0777)
-			if err != nil {
-				return fmt.Errorf("Error while opening file: %v", err)
-			}
-			defer statsFile.Close()
-		} else {
-			return fmt.Errorf("Error while creating file: %v", err)
+		statsFile, err = os.OpenFile("stats", os.O_WRONLY|os.O_APPEND, 0777)
+		if err != nil {
+			return fmt.Errorf("Error while opening file: %v", err)
 		}
+		defer statsFile.Close()
 	}
 
 	for i, runtime := range runtimes {
