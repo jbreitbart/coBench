@@ -56,7 +56,9 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error running application individually: %v\n", err)
 		}
-		referenceRuntimes[cmd] = computeRuntimeStats(r)
+		stat := computeRuntimeStats(r)
+		referenceRuntimes[cmd] = stat
+		printStats(cmd, stat, 0)
 	}
 	fmt.Println("Individual runs done. \n")
 
