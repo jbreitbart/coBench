@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/montanaflynn/stats"
 )
 
 func runSingle(c string, id int) ([]time.Duration, error) {
@@ -118,8 +121,11 @@ func runPair(cPair [2]string, id int, catConfig []uint64) ([][]time.Duration, er
 }
 
 func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, runtime *[]time.Duration, done chan int, errs chan error) {
-
 	defer wg.Done()
+
+	oldVariance := 0.0
+	var runtimeInSeconds []float64
+	completed := false
 
 	for i := 1; ; i++ {
 		// create a copy of the command
@@ -145,11 +151,17 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, runtime *[]time.
 		if d != len(cpus) {
 			// yes
 			*runtime = append(*runtime, elapsed)
+			runtimeInSeconds = append(runtimeInSeconds, elapsed.Seconds())
 		}
 
 		// did we run min times?
-		if i == min {
-			d++
+		if !completed && i >= min {
+			vari, _ := stats.Variance(runtimeInSeconds)
+			if math.Abs(vari-oldVariance) < 0.0001 {
+				d++
+				completed = true
+			}
+			oldVariance = vari
 		}
 		done <- d
 
