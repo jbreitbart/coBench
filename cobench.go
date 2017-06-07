@@ -23,6 +23,16 @@ var resctrlPath *string
 var cat *bool
 var catBitChunk *uint64
 
+type runtimeT struct {
+	Mean       float64
+	Stddev     float64
+	Vari       float64
+	RuntimeSum float64
+	Runs       int
+}
+
+var referenceRuntimes map[string]runtimeT
+
 func main() {
 	commandFile := parseArgs()
 
@@ -32,6 +42,43 @@ func main() {
 	}
 	if len(commands) < 2 {
 		log.Fatal("You must provide at least 2 commands")
+	}
+
+	commandPairs := generateCommandPairs(commands)
+
+	referenceRuntimes = make(map[string]runtimeT, len(commandPairs))
+
+	// run apps indiviually
+	fmt.Println("Running apps individually:")
+	for i, cmd := range commands {
+		fmt.Printf("Running %v\n", cmd)
+		r, err := runSingle(cmd, i)
+		if err != nil {
+			log.Fatalf("Error running application individually: %v\n", err)
+		}
+		referenceRuntimes[cmd] = computeRuntimeStats(r)
+	}
+	fmt.Println("Individual runs done. \n")
+
+	// run co-scheduling without cat
+	if *cat {
+		*cat = false
+		for i, c := range commandPairs {
+			fmt.Printf("Running pair %v\n", i)
+			fmt.Println(c)
+
+			catConfig := []uint64{0, 0}
+			runtimes, err := runPair(c, i, catConfig)
+			if err != nil {
+				log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
+			}
+
+			err = processRuntime(i, c, catConfig, runtimes)
+			if err != nil {
+				log.Fatalf("Error processing runtime: %v", err)
+			}
+		}
+		*cat = true
 	}
 
 	minBits := uint64(0)
@@ -46,7 +93,6 @@ func main() {
 		defer resetCAT()
 	}
 
-	commandPairs := generateCommandPairs(commands)
 	catPairs := generateCatConfigs(minBits, numBits)
 
 	fmt.Println("Executing the following command pairs:")
@@ -72,86 +118,138 @@ func main() {
 	}
 }
 
-func processRuntime(id int, cPair [2]string, catMasks []uint64, runtimes [][]time.Duration) error {
+func computeRuntimeStats(runtime []time.Duration) runtimeT {
+	var stat runtimeT
+	var runtimeSeconds []float64
+	for _, r := range runtime {
+		runtimeSeconds = append(runtimeSeconds, r.Seconds())
+	}
 
+	// TODO handle error?
+	stat.Mean, _ = stats.Mean(runtimeSeconds)
+	stat.Stddev, _ = stats.StandardDeviation(runtimeSeconds)
+	stat.Vari, _ = stats.Variance(runtimeSeconds)
+	stat.RuntimeSum, _ = stats.Sum(runtimeSeconds)
+
+	stat.Runs = len(runtime)
+
+	return stat
+}
+
+func openStatsFile() (*os.File, error) {
 	var statsFile *os.File
 	if _, err := os.Stat("stats"); os.IsNotExist(err) {
 		// stats does not exist
 		statsFile, err = os.Create("stats")
 		if err != nil {
-			return fmt.Errorf("Error while creating file: %v", err)
+			return nil, fmt.Errorf("Error while creating file: %v", err)
 		}
-		defer statsFile.Close()
 
 		// write header
 		statsFile.WriteString("cmd \t avg. runtime (s) \t std. dev. \t variance \t runs")
 		if *cat {
 			statsFile.WriteString("\t CAT")
 		}
-		statsFile.WriteString("\t nom. perf\n")
+		statsFile.WriteString("\t co-slowdown\n")
 	} else {
 		statsFile, err = os.OpenFile("stats", os.O_WRONLY|os.O_APPEND, 0777)
 		if err != nil {
-			return fmt.Errorf("Error while opening file: %v", err)
+			return nil, fmt.Errorf("Error while opening file: %v", err)
 		}
-		defer statsFile.Close()
 	}
+	return statsFile, nil
+}
+
+func printStats(c string, stat runtimeT, catMask uint64) {
+	s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %3d runs", c, stat.Mean, stat.Stddev, stat.Vari, stat.Runs)
+	if *cat {
+		s += fmt.Sprintf("\t %6x CAT", catMask)
+	} else {
+		s += "\t           "
+	}
+
+	ref, ok := referenceRuntimes[c]
+	if ok {
+		s += fmt.Sprintf("\t %1.6f co-slowdown", stat.Mean/ref.Mean)
+	} else {
+		s += "\t ref missing"
+	}
+
+	fmt.Println(s)
+}
+
+func writeToStatsFile(statsFile *os.File, c string, stat runtimeT, catMask uint64) error {
+	s := fmt.Sprintf("%v \t %v \t %v \t %v \t %v", c, stat.Mean, stat.Stddev, stat.Vari, stat.Runs)
+	if *cat {
+		s += fmt.Sprintf("\t %6x", catMask)
+	} else {
+		s += "\t       "
+	}
+
+	ref := referenceRuntimes[c]
+	s += fmt.Sprintf("\t %1.6f co-slowdown", stat.Mean/ref.Mean)
+
+	s += "\n"
+
+	_, err := statsFile.WriteString(s)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeRuntimeFile(c string, cCo string, id int, i int, catMask uint64, runtime []time.Duration) error {
+	filename := fmt.Sprintf("%v-%v", id, i)
+	if *cat {
+		filename += fmt.Sprintf("-%x", catMask)
+	}
+	filename += ".time"
+	measurementsFile, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("Error while creating file: %v", err)
+	}
+	defer measurementsFile.Close()
+
+	out := "# runtime in nanoseconds of \"" + c + "\" on CPUs " + cpus[i] + " while \"" + cCo + "\" was running on cores " + cpus[(i+1)%len(cpus)]
+	if *cat {
+		out += fmt.Sprintf(" with CAT %6x ", catMask)
+	}
+	out += "\n"
+	for _, r := range runtime {
+		out += strconv.FormatInt(r.Nanoseconds(), 10)
+		out += "\n"
+	}
+
+	_, err = measurementsFile.WriteString(out)
+	if err != nil {
+		return fmt.Errorf("Error while writing measurements file: %v", err)
+	}
+	return nil
+}
+
+func processRuntime(id int, cPair [2]string, catMasks []uint64, runtimes [][]time.Duration) error {
+
+	statsFile, err := openStatsFile()
+	if err != nil {
+		return err
+	}
+	defer statsFile.Close()
 
 	for i, runtime := range runtimes {
-		var runtimeSeconds []float64
-		for _, r := range runtime {
-			runtimeSeconds = append(runtimeSeconds, r.Seconds())
-		}
+		stat := computeRuntimeStats(runtime)
 
-		mean, _ := stats.Mean(runtimeSeconds)
-		stddev, _ := stats.StandardDeviation(runtimeSeconds)
-		vari, _ := stats.Variance(runtimeSeconds)
-		runtimeSum, _ := stats.Sum(runtimeSeconds)
-
-		s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %3d runs", cPair[i], mean, stddev, vari, len(runtime))
-		if *cat {
-			s += fmt.Sprintf("\t %6x CAT", catMasks[i])
-		} else {
-			s += "\t           "
-		}
-		s += fmt.Sprintf("\t %1.6f nom. perf", (float64)(len(runtime))/runtimeSum)
-		fmt.Println(s)
-
-		statsFile.WriteString(fmt.Sprintf("%v \t %v \t %v \t %v \t %v", cPair[i], mean, stddev, vari, len(runtime)))
-		if *cat {
-			statsFile.WriteString(fmt.Sprintf("\t %6x", catMasks[i]))
-		} else {
-			statsFile.WriteString("\t       ")
-		}
-		statsFile.WriteString(fmt.Sprintf("\t %v\n", (float64)(len(runtime))/runtimeSum))
+		printStats(cPair[i], stat, catMasks[i])
+		writeToStatsFile(statsFile, cPair[i], stat, catMasks[i])
 	}
+
 	fmt.Print("\n")
 
 	for i, runtime := range runtimes {
-		filename := fmt.Sprintf("%v-%v", id, i)
-		if *cat {
-			filename += fmt.Sprintf("-%x", catMasks[i])
-		}
-		filename += ".time"
-		measurementsFile, err := os.Create(filename)
-		if err != nil {
-			return fmt.Errorf("Error while creating file: %v", err)
-		}
-		defer measurementsFile.Close()
 
-		out := "# runtime in nanoseconds of \"" + cPair[i] + "\" on CPUs " + cpus[i] + "while \"" + cPair[(i+1)%2] + "\" was running on cores " + cpus[(i+1)%len(cpus)]
-		if *cat {
-			out += fmt.Sprintf(" with CAT %6x ", catMasks[i])
-		}
-		out += "\n"
-		for _, r := range runtime {
-			out += strconv.FormatInt(r.Nanoseconds(), 10)
-			out += "\n"
-		}
-
-		_, err = measurementsFile.WriteString(out)
+		err := writeRuntimeFile(cPair[i], cPair[(i+1)%2], id, i, catMasks[i], runtime)
 		if err != nil {
-			return fmt.Errorf("Error while writing measurements file: %v", err)
+			return err
 		}
 	}
 

@@ -8,6 +8,54 @@ import (
 	"time"
 )
 
+func runSingle(c string, id int) ([]time.Duration, error) {
+	env := os.Environ()
+
+	// TODO CAT?
+
+	var cmd *exec.Cmd
+	if *hermitcore {
+		cmd = exec.Command("numactl", "--physcpubind", cpus[0], "/bin/sh", "-c", c)
+		cmd.Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
+	} else {
+		cmd = exec.Command("/bin/sh", "-c", c)
+		cmd.Env = append(env, "GOMP_CPU_AFFINITY="+cpus[0], "OMP_NUM_THREADS="+*threads)
+	}
+
+	filename := fmt.Sprintf("%v", id)
+	filename += ".log"
+	outfile, err := os.Create(filename)
+	if err != nil {
+		return nil, fmt.Errorf("Error while creating file: %v", err)
+	}
+	defer outfile.Close()
+	cmd.Stdout = outfile
+
+	// used to count how many apps have reached their min limit
+	done := make(chan int, 1)
+	done <- 1
+
+	// used to return an error from the go-routines
+	errs := make(chan error, 1)
+
+	// used to return the app runtimes
+	var runtimes []time.Duration
+
+	// used to wait for the following 2 goroutines
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go runCmdMinTimes(cmd, *runs, &wg, &runtimes, done, errs)
+
+	wg.Wait()
+
+	if len(errs) != 0 {
+		return nil, <-errs
+	}
+
+	return runtimes, nil
+}
+
 // TODO remove id
 func runPair(cPair [2]string, id int, catConfig []uint64) ([][]time.Duration, error) {
 	env := os.Environ()
