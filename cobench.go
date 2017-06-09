@@ -23,6 +23,8 @@ var resctrlPath *string
 var cat *bool
 var catBitChunk *uint64
 
+var varianceDiff *float64
+
 type runtimeT struct {
 	Mean       float64
 	Stddev     float64
@@ -305,6 +307,8 @@ func parseArgs() *string {
 	resctrlPath = flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
 
 	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
+
+	varianceDiff = flag.Float64("variance", 0.001, "Minimum differences in variance required between runs")
 
 	flag.Parse()
 
