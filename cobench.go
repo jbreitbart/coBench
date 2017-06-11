@@ -22,6 +22,7 @@ var hermitcore *bool
 var resctrlPath *string
 var cat *bool
 var catBitChunk *uint64
+var catDirs []string
 
 var varianceDiff *float64
 
@@ -305,6 +306,7 @@ func parseArgs() *string {
 	cat = flag.Bool("cat", false, "Measure with all CAT settings")
 	catBitChunk = flag.Uint64("catChunk", 2, "Bits changed from one run to the next")
 	resctrlPath = flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
+	catDirs = []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
 
 	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
 

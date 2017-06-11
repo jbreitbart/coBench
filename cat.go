@@ -24,8 +24,8 @@ func generateCatConfigs(minBits uint64, numBits uint64) [][]uint64 {
 	return pairs
 }
 
-func createDirsCAT(dirs []string) error {
-	for _, dir := range dirs {
+func createDirsCAT() error {
+	for _, dir := range catDirs {
 		err := os.Mkdir(dir, 0777)
 		if os.IsExist(err) {
 			continue
@@ -38,8 +38,8 @@ func createDirsCAT(dirs []string) error {
 	return nil
 }
 
-func removeDirsCAT(dirs []string) error {
-	for _, dir := range dirs {
+func removeDirsCAT() error {
+	for _, dir := range catDirs {
 		err := os.Remove(dir)
 		if err != nil {
 			return fmt.Errorf("Cannot remove dir %v: %v", dir, err)
@@ -50,10 +50,7 @@ func removeDirsCAT(dirs []string) error {
 }
 
 func resetCAT() error {
-	// TODO duplicated line
-	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
-
-	return removeDirsCAT(dirs)
+	return removeDirsCAT()
 }
 
 func setupCAT() (minBits uint64, numBits uint64, err error) {
@@ -61,14 +58,11 @@ func setupCAT() (minBits uint64, numBits uint64, err error) {
 	minBits = 2
 	numBits = 20
 
-	// TODO hardcoded length
-	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
-
-	numbers := regexp.MustCompile("[0-9]+")
-
-	if err = createDirsCAT(dirs); err != nil {
+	if err = createDirsCAT(); err != nil {
 		return
 	}
+
+	numbers := regexp.MustCompile("[0-9]+")
 
 	for i, cpu := range cpus {
 		cpuIDs := numbers.FindAllString(cpu, -1)
@@ -103,7 +97,7 @@ func setupCAT() (minBits uint64, numBits uint64, err error) {
 
 		var file *os.File
 
-		file, err = os.OpenFile(dirs[i]+"/cpus", os.O_WRONLY|os.O_TRUNC, 0777)
+		file, err = os.OpenFile(catDirs[i]+"/cpus", os.O_WRONLY|os.O_TRUNC, 0777)
 		if err != nil {
 			err = fmt.Errorf("CAT could not open cpus file: %v", err)
 			return
@@ -121,14 +115,12 @@ func setupCAT() (minBits uint64, numBits uint64, err error) {
 }
 
 func writeCATConfig(configs []uint64) error {
-	// TODO duplicated line
-	dirs := []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
 
-	if len(dirs) != len(configs) {
+	if len(catDirs) != len(configs) {
 		return fmt.Errorf("Internal error")
 	}
 
-	for i, dir := range dirs {
+	for i, dir := range catDirs {
 		file, err := os.OpenFile(dir+"/schemata", os.O_WRONLY|os.O_TRUNC, 0777)
 		if err != nil {
 			return fmt.Errorf("CAT could not open cpus file: %v", err)
