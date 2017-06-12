@@ -53,10 +53,19 @@ func resetCAT() error {
 	return removeDirsCAT()
 }
 
-func setupCAT() (minBits uint64, numBits uint64, err error) {
+func readCATInfo() (minBits uint64, numBits uint64, err error) {
 	// TODO read from resctrlPath
 	minBits = 2
 	numBits = 20
+	err = nil
+	return
+}
+
+func setupCAT() (minBits uint64, numBits uint64, err error) {
+
+	if minBits, numBits, err = readCATInfo(); err != nil {
+		return
+	}
 
 	if err = createDirsCAT(); err != nil {
 		return
@@ -104,7 +113,7 @@ func setupCAT() (minBits uint64, numBits uint64, err error) {
 		}
 		defer file.Close()
 
-		_, err = file.WriteString(fmt.Sprintf("%v", bitset))
+		_, err = file.WriteString(fmt.Sprintf("%x", bitset))
 		if err != nil {
 			err = fmt.Errorf("CAT could write to cpus file: %v", err)
 			return
