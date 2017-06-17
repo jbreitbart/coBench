@@ -29,3 +29,4 @@ cmd.txt
 *.time
 res/
 stats
+coBench.config
