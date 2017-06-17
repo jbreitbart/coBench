@@ -11,28 +11,38 @@ import (
 	"github.com/montanaflynn/stats"
 )
 
-func runSingle(c string, id int) ([]time.Duration, error) {
+func setupCmd(c string, cpuId int, logFilename string) (*exec.Cmd, *os.File, error) {
 	env := os.Environ()
-
-	// TODO CAT?
-
 	var cmd *exec.Cmd
+
 	if *hermitcore {
-		cmd = exec.Command("numactl", "--physcpubind", cpus[0], "/bin/sh", "-c", c)
+		cmd = exec.Command("numactl", "--physcpubind", cpus[cpuId], "/bin/sh", "-c", c)
 		cmd.Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
 	} else {
 		cmd = exec.Command("/bin/sh", "-c", c)
-		cmd.Env = append(env, "GOMP_CPU_AFFINITY="+cpus[0], "OMP_NUM_THREADS="+*threads)
+		cmd.Env = append(env, "GOMP_CPU_AFFINITY="+cpus[cpuId], "OMP_NUM_THREADS="+*threads)
 	}
 
-	filename := fmt.Sprintf("%v", id)
-	filename += ".log"
-	outfile, err := os.Create(filename)
+	outfile, err := os.Create(logFilename)
 	if err != nil {
-		return nil, fmt.Errorf("Error while creating file: %v", err)
+		return nil, nil, fmt.Errorf("Error while creating file: %v", err)
 	}
-	defer outfile.Close()
 	cmd.Stdout = outfile
+	cmd.Stderr = outfile
+
+	return cmd, outfile, nil
+}
+
+func runSingle(c string, id int) ([]time.Duration, error) {
+
+	// TODO CAT?
+
+	filename := fmt.Sprintf("%v.log", id)
+	cmd, outFile, err := setupCmd(c, 0, filename)
+	if err != nil {
+		return nil, err
+	}
+	defer outFile.Close()
 
 	// used to count how many apps have reached their min limit
 	done := make(chan int, 1)
@@ -61,8 +71,6 @@ func runSingle(c string, id int) ([]time.Duration, error) {
 
 // TODO remove id
 func runPair(cPair [2]string, id int, catConfig []uint64) ([][]time.Duration, error) {
-	env := os.Environ()
-
 	if *cat {
 		if err := writeCATConfig(catConfig); err != nil {
 			return nil, fmt.Errorf("Error while writting CAT config: %v", err)
@@ -72,25 +80,19 @@ func runPair(cPair [2]string, id int, catConfig []uint64) ([][]time.Duration, er
 	var cmds [len(cpus)]*exec.Cmd
 	// setup commands
 	for i, _ := range cmds {
-		if *hermitcore {
-			cmds[i] = exec.Command("numactl", "--physcpubind", cpus[i], "/bin/sh", "-c", cPair[i])
-			cmds[i].Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
-		} else {
-			cmds[i] = exec.Command("/bin/sh", "-c", cPair[i])
-			cmds[i].Env = append(env, "GOMP_CPU_AFFINITY="+cpus[i], "OMP_NUM_THREADS="+*threads)
-		}
-
 		filename := fmt.Sprintf("%v-%v", id, i)
 		if *cat {
 			filename += fmt.Sprintf("-%x", catConfig[i])
 		}
 		filename += ".log"
-		outfile, err := os.Create(filename)
+
+		var outFile *os.File
+		var err error
+		cmds[i], outFile, err = setupCmd(cPair[i], i, filename)
 		if err != nil {
-			return nil, fmt.Errorf("Error while creating file: %v", err)
+			return nil, err
 		}
-		defer outfile.Close()
-		cmds[i].Stdout = outfile
+		defer outFile.Close()
 	}
 
 	// used to count how many apps have reached their min limit
