@@ -60,14 +60,18 @@ func storeConfig(commands []string) error {
 	}
 
 	out := fmt.Sprintf("Runs: %v \n", *runs)
+	out += fmt.Sprintf("Variance diff: %v \n", *varianceDiff)
+
 	out += fmt.Sprintf("CPUs: %v \n", cpus)
 	out += fmt.Sprintf("Threads: %v \n", *threads)
+
 	out += fmt.Sprintf("HermitCore: %v \n", *hermitcore)
+
 	out += fmt.Sprintf("CAT: %v \n", *cat)
 	out += fmt.Sprintf("CAT chunk: %v \n", *catBitChunk)
 	out += fmt.Sprintf("CAT dirs: %v \n", catDirs)
 	out += fmt.Sprintf("resctrlPath: %v \n", *resctrlPath)
-	out += fmt.Sprintf("Variance diff: %v \n", *varianceDiff)
+
 	out += fmt.Sprintf("Commands: %v \n", commands)
 
 	_, err = file.WriteString(out)
