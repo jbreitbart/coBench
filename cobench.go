@@ -192,7 +192,7 @@ func writeToStatsFile(statsFile *os.File, c string, stat runtimeT, catMask uint6
 	}
 
 	ref := referenceRuntimes[c]
-	s += fmt.Sprintf("\t %1.6f co-slowdown", stat.Mean/ref.Mean)
+	s += fmt.Sprintf("\t %1.6f", stat.Mean/ref.Mean)
 
 	s += "\n"
 
@@ -325,6 +325,8 @@ func parseArgs() *string {
 
 	cpus[0] = *cpus0
 	cpus[1] = *cpus1
+
+	// TODO store config used in file!
 
 	return commandFile
 }
