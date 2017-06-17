@@ -151,11 +151,7 @@ func openStatsFile() (*os.File, error) {
 		}
 
 		// write header
-		statsFile.WriteString("cmd \t avg. runtime (s) \t std. dev. \t variance \t runs")
-		if *cat {
-			statsFile.WriteString("\t CAT")
-		}
-		statsFile.WriteString("\t co-slowdown\n")
+		statsFile.WriteString("cmd \t avg. runtime (s) \t std. dev. \t variance \t runs \t CAT \t co-slowdown\n")
 	} else {
 		statsFile, err = os.OpenFile("stats", os.O_WRONLY|os.O_APPEND, 0777)
 		if err != nil {
