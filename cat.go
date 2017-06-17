@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/jbreitbart/coBench/bit"
 )
@@ -54,9 +56,37 @@ func resetCAT() error {
 }
 
 func readCATInfo() (minBits uint64, numBits uint64, err error) {
-	// TODO read from resctrlPath
-	minBits = 2
-	numBits = 20
+	minBitsFilename := *resctrlPath + "/info/L3/min_cbm_bits"
+	minBitsByteTxt, err := ioutil.ReadFile(minBitsFilename)
+	if err != nil {
+		return
+	}
+	minBitsTxt := strings.TrimSpace(string(minBitsByteTxt))
+	minBits, err = strconv.ParseUint(minBitsTxt, 10, 64)
+	if err != nil {
+		return
+	}
+
+	numBitsFilename := *resctrlPath + "/info/L3/cbm_mask"
+	numBitsByteTxt, err := ioutil.ReadFile(numBitsFilename)
+	if err != nil {
+		return
+	}
+	numBitsTxt := strings.TrimSpace(string(numBitsByteTxt))
+	numBitsTemp, err := strconv.ParseUint(numBitsTxt, 16, 64)
+	if err != nil {
+		return
+	}
+
+	numBits = 0
+	for i := (uint64)(0); i < 64; i++ {
+		if bit.Has(numBitsTemp, i) {
+			numBits++
+		}
+	}
+
+	fmt.Printf("%v - %v\n", minBits, numBits)
+
 	err = nil
 	return
 }
