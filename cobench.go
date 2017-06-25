@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
 var referenceRuntimes map[string]runtimeT
@@ -125,7 +126,11 @@ func readCommands(filename string) ([]string, error) {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		commands = append(commands, scanner.Text())
+		temp := scanner.Text()
+		temp = strings.TrimSpace(temp)
+		if len(temp) > 0 && temp[0] != '#' {
+			commands = append(commands, scanner.Text())
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
