@@ -11,6 +11,7 @@ var runs *int
 var cpus [2]string
 var threads *string
 var hermitcore *bool
+var noCoSched *bool
 
 var resctrlPath *string
 var cat *bool
@@ -34,6 +35,8 @@ func parseArgs() *string {
 	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
 
 	varianceDiff = flag.Float64("variance", 0.001, "Minimum differences in variance required between runs")
+
+	noCoSched = flag.Bool("no-cosched", false, "Disable co-scheduling")
 
 	flag.Parse()
 	catDirs = []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}

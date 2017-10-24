@@ -44,6 +44,10 @@ func main() {
 	}
 	fmt.Println("Individual runs done. \n")
 
+	if *noCoSched {
+		return
+	}
+
 	// run co-scheduling without cat
 	if *cat {
 		*cat = false
