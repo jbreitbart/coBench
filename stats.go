@@ -12,15 +12,15 @@ import (
 	"github.com/montanaflynn/stats"
 )
 
-type statsT struct {
-	// Application command line as a key
-	Runtimes map[string]runtimePerAppT
-}
-
 // used as a key
 type coSchedCATKey struct {
 	Application string
 	CAT         uint64
+}
+
+type statsT struct {
+	// Application command line as a key
+	Runtimes map[string]*runtimePerAppT
 }
 
 type runtimePerAppT struct {
@@ -28,13 +28,13 @@ type runtimePerAppT struct {
 	ReferenceRuntimes runtimeT
 
 	// individual runtime with CAT config used as key
-	CATRuntimes map[uint64]runtimeT
+	CATRuntimes *map[uint64]runtimeT
 
 	// runtime coScheduling without CAT
-	CoSchedRuntimes map[string]runtimeT
+	CoSchedRuntimes *map[string]runtimeT
 
 	// runtime coScheduling with CAT
-	CoSchedCATRuntimes map[coSchedCATKey]runtimeT
+	CoSchedCATRuntimes *map[coSchedCATKey]runtimeT
 }
 
 type runtimeT struct {
@@ -58,19 +58,30 @@ func addReferenceTime(application string, referenceTime runtimeT) {
 	var temp runtimePerAppT
 	temp.ReferenceRuntimes = referenceTime
 
-	runtimeStats.Runtimes[application] = temp
+	if runtimeStats.Runtimes == nil {
+		runtimeStats.Runtimes = make(map[string]*runtimePerAppT, 1)
+	}
+	runtimeStats.Runtimes[application] = &temp
 }
 
 func addCATRuntime(application string, CAT uint64, runtime runtimeT) {
 	checkIfReferenceExists(application)
 
-	runtimeStats.Runtimes[application].CATRuntimes[CAT] = runtime
+	if runtimeStats.Runtimes[application].CATRuntimes == nil {
+		temp := make(map[uint64]runtimeT, 1)
+		runtimeStats.Runtimes[application].CATRuntimes = &temp
+	}
+	(*runtimeStats.Runtimes[application].CATRuntimes)[CAT] = runtime
 }
 
 func addCoSchedRuntime(application string, coSchedApplication string, runtime runtimeT) {
 	checkIfReferenceExists(application)
 
-	runtimeStats.Runtimes[application].CoSchedRuntimes[coSchedApplication] = runtime
+	if runtimeStats.Runtimes[application].CoSchedRuntimes == nil {
+		temp := make(map[string]runtimeT, 1)
+		runtimeStats.Runtimes[application].CoSchedRuntimes = &temp
+	}
+	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = runtime
 }
 
 func addCoSchedCATRuntime(application string, coSchedApplication string, CAT uint64, runtime runtimeT) {
@@ -78,7 +89,11 @@ func addCoSchedCATRuntime(application string, coSchedApplication string, CAT uin
 
 	key := coSchedCATKey{coSchedApplication, CAT}
 
-	runtimeStats.Runtimes[application].CoSchedCATRuntimes[key] = runtime
+	if runtimeStats.Runtimes[application].CoSchedCATRuntimes == nil {
+		temp := make(map[coSchedCATKey]runtimeT, 1)
+		runtimeStats.Runtimes[application].CoSchedCATRuntimes = &temp
+	}
+	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[key] = runtime
 }
 
 func computeRuntimeStats(runtime []time.Duration) runtimeT {
