@@ -56,6 +56,8 @@ func individualRuns(commands []string) {
 		stat := computeRuntimeStats(r)
 		referenceRuntimes[c] = stat
 		printStats(c, stat, catConfig[0])
+
+		addReferenceTime(c, stat)
 	}
 
 	if !*cat {
@@ -87,7 +89,7 @@ func individualRuns(commands []string) {
 
 			printStats(c, stat, catConfig[0])
 
-			// TODO process runtime somhow?
+			addCATRuntime(c, catConfig[0], stat)
 		}
 	}
 
