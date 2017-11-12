@@ -94,7 +94,7 @@ func writeToStatsFile(statsFile *os.File, c string, stat runtimeT, catMask uint6
 	return nil
 }
 
-func processRuntime(id int, cPair [2]string, catMasks []uint64, runtimes [][]time.Duration) error {
+func processRuntime(id int, cPair [2]string, catMasks [2]uint64, runtimes [][]time.Duration) error {
 
 	statsFile, err := openStatsFile()
 	if err != nil {

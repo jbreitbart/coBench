@@ -33,9 +33,13 @@ func setupCmd(c string, cpuId int, logFilename string) (*exec.Cmd, *os.File, err
 	return cmd, outfile, nil
 }
 
-func runSingle(c string, id int) ([]time.Duration, error) {
+func runSingle(c string, id int, catConfig [2]uint64) ([]time.Duration, error) {
 
-	// TODO CAT?
+	if catConfig[0] != 0 && catConfig[1] != 0 {
+		if err := writeCATConfig(catConfig); err != nil {
+			return nil, fmt.Errorf("Error while writting CAT config: %v", err)
+		}
+	}
 
 	filename := fmt.Sprintf("%v.log", id)
 	cmd, outFile, err := setupCmd(c, 0, filename)
@@ -70,8 +74,9 @@ func runSingle(c string, id int) ([]time.Duration, error) {
 }
 
 // TODO remove id
-func runPair(cPair [2]string, id int, catConfig []uint64) ([][]time.Duration, error) {
-	if *cat {
+func runPair(cPair [2]string, id int, catConfig [2]uint64) ([][]time.Duration, error) {
+
+	if catConfig[0] != 0 && catConfig[1] != 0 {
 		if err := writeCATConfig(catConfig); err != nil {
 			return nil, fmt.Errorf("Error while writting CAT config: %v", err)
 		}

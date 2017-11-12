@@ -11,17 +11,14 @@ import (
 	"github.com/jbreitbart/coBench/bit"
 )
 
-func generateCatConfigs(minBits uint64, numBits uint64) [][]uint64 {
-	pairs := make([][]uint64, 0)
+func generateCatConfigs(minBits uint64, numBits uint64) [][2]uint64 {
+	pairs := make([][2]uint64, 0)
 
 	if *cat {
 		for bits := minBits; bits <= numBits-minBits; bits += *catBitChunk {
-			pairs = append(pairs, []uint64{bit.SetFirstN(0, bits), bit.SetLastN(0, bits, numBits)})
+			pairs = append(pairs, [2]uint64{bit.SetFirstN(0, bits), bit.SetLastN(0, bits, numBits)})
 		}
 	}
-
-	// Added as a last entry, so that after programm execution cat is disabled
-	pairs = append(pairs, []uint64{bit.SetFirstN(0, numBits), bit.SetFirstN(0, numBits)})
 
 	return pairs
 }
@@ -153,7 +150,7 @@ func setupCAT() (minBits uint64, numBits uint64, err error) {
 	return
 }
 
-func writeCATConfig(configs []uint64) error {
+func writeCATConfig(configs [2]uint64) error {
 
 	if len(catDirs) != len(configs) {
 		return fmt.Errorf("Internal error")

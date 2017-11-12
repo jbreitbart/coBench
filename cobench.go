@@ -30,63 +30,108 @@ func main() {
 
 	referenceRuntimes = make(map[string]runtimeT, len(commandPairs))
 
-	// run apps indiviually
-	fmt.Println("Running apps individually:")
-	for i, cmd := range commands {
-		fmt.Printf("Running %v\n", cmd)
-		r, err := runSingle(cmd, i)
-		if err != nil {
-			log.Fatalf("Error running application individually: %v\n", err)
-		}
-		stat := computeRuntimeStats(r)
-		referenceRuntimes[cmd] = stat
-		printStats(cmd, stat, 0)
-	}
-	fmt.Println("Individual runs done. \n")
+	// run apps individually
+	individualRuns(commands)
 
 	if *noCoSched {
 		return
 	}
 
-	// run co-scheduling without cat
-	if *cat {
-		*cat = false
-		for i, c := range commandPairs {
-			fmt.Printf("Running pair %v\n", i)
-			fmt.Println(c)
+	coSchedRuns(commandPairs)
+}
 
-			catConfig := []uint64{0, 0}
-			runtimes, err := runPair(c, i, catConfig)
-			if err != nil {
-				log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
-			}
+func individualRuns(commands []string) {
 
-			err = processRuntime(i, c, catConfig, runtimes)
-			if err != nil {
-				log.Fatalf("Error processing runtime: %v", err)
-			}
+	fmt.Println("Running apps individually.")
+
+	// run app individually without CAT (if CAT was requested)
+	for i, c := range commands {
+		catConfig := [2]uint64{0, 0}
+
+		fmt.Printf("Running %v\n", c)
+		r, err := runSingle(c, i, catConfig)
+		if err != nil {
+			log.Fatalf("Error running application individually: %v\n", err)
 		}
-		*cat = true
+		stat := computeRuntimeStats(r)
+		referenceRuntimes[c] = stat
+		printStats(c, stat, catConfig[0])
+	}
+
+	if !*cat {
+		return
 	}
 
 	minBits := uint64(0)
 	numBits := uint64(0)
 
-	if *cat {
-		var err error
-		minBits, numBits, err = setupCAT()
-		if err != nil {
-			log.Fatalf("%v\n", err)
-		}
-		defer resetCAT()
+	var err error
+	minBits, numBits, err = setupCAT()
+	if err != nil {
+		log.Fatalf("%v\n", err)
 	}
+	defer resetCAT()
 
 	catPairs := generateCatConfigs(minBits, numBits)
 
+	for i, c := range commands {
+
+		fmt.Printf("Running %v\n", c)
+
+		for _, catConfig := range catPairs {
+			runtime, err := runSingle(c, i, catConfig)
+			if err != nil {
+				log.Fatalf("Error running application individually: %v\n", err)
+			}
+			stat := computeRuntimeStats(runtime)
+
+			printStats(c, stat, catConfig[0])
+
+			// TODO process runtime somhow?
+		}
+	}
+
+	fmt.Println("Individual runs done. \n")
+}
+
+func coSchedRuns(commandPairs [][2]string) {
 	fmt.Println("Executing the following command pairs:")
 	for _, c := range commandPairs {
 		fmt.Println(c)
 	}
+
+	// run co-scheduling *without* cat
+	for i, c := range commandPairs {
+		fmt.Printf("Running pair %v\n", i)
+		fmt.Println(c)
+
+		catConfig := [2]uint64{0, 0}
+		runtimes, err := runPair(c, i, catConfig)
+		if err != nil {
+			log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
+		}
+
+		err = processRuntime(i, c, catConfig, runtimes)
+		if err != nil {
+			log.Fatalf("Error processing runtime: %v", err)
+		}
+	}
+
+	if !*cat {
+		return
+	}
+
+	minBits := uint64(0)
+	numBits := uint64(0)
+
+	var err error
+	minBits, numBits, err = setupCAT()
+	if err != nil {
+		log.Fatalf("%v\n", err)
+	}
+	defer resetCAT()
+
+	catPairs := generateCatConfigs(minBits, numBits)
 
 	for i, c := range commandPairs {
 		fmt.Printf("Running pair %v\n", i)
