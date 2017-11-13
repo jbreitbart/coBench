@@ -3,7 +3,10 @@ package main
 // TODO move to own package
 
 import (
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -18,9 +21,43 @@ type coSchedCATKey struct {
 	CAT         uint64
 }
 
+func (k coSchedCATKey) MarshalText() ([]byte, error) {
+	c := make([]byte, 8)
+	binary.LittleEndian.PutUint64(c, k.CAT)
+
+	a := []byte(k.Application)
+
+	return append(c, a...), nil
+}
+
+func (k coSchedCATKey) UnmarshalText(text []byte) error {
+	c := text[0:8]
+	k.CAT = binary.LittleEndian.Uint64(c)
+
+	k.Application = string(text[8:])
+
+	return nil
+}
+
 type statsT struct {
 	// Application command line as a key
 	Runtimes map[string]*runtimePerAppT
+
+	// Command line options passed to coBench
+	Commandline commandlineT
+}
+
+type commandlineT struct {
+	Runs         int
+	VarianceDiff float64
+	CPUs         [2]string
+	Threads      string
+	HermitCore   bool
+	CAT          bool
+	CATChunk     uint64
+	CATDirs      []string
+	ResctrlPath  string
+	Commands     []string
 }
 
 type runtimePerAppT struct {
@@ -43,6 +80,7 @@ type runtimeT struct {
 	Vari       float64
 	RuntimeSum float64
 	Runs       int
+	RawRuntime []time.Duration
 }
 
 // global variable that keeps track of everything
@@ -96,6 +134,26 @@ func addCoSchedCATRuntime(application string, coSchedApplication string, CAT uin
 	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[key] = runtime
 }
 
+func storeToFile(filename string) error {
+	json, err := json.Marshal(runtimeStats)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(filename, json, 0644)
+	return err
+}
+
+func readFromFile(filename string) error {
+	raw, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(raw, &runtimeStats)
+	return err
+}
+
 func computeRuntimeStats(runtime []time.Duration) runtimeT {
 	var stat runtimeT
 	var runtimeSeconds []float64
@@ -110,6 +168,7 @@ func computeRuntimeStats(runtime []time.Duration) runtimeT {
 	stat.RuntimeSum, _ = stats.Sum(runtimeSeconds)
 
 	stat.Runs = len(runtime)
+	stat.RawRuntime = runtime
 
 	return stat
 }

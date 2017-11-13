@@ -57,6 +57,18 @@ func parseArgs() *string {
 }
 
 func storeConfig(commands []string) error {
+
+	runtimeStats.Commandline.CAT = *cat
+	runtimeStats.Commandline.CATChunk = *catBitChunk
+	runtimeStats.Commandline.CATDirs = catDirs
+	runtimeStats.Commandline.CPUs = cpus
+	runtimeStats.Commandline.Commands = commands
+	runtimeStats.Commandline.HermitCore = *hermitcore
+	runtimeStats.Commandline.ResctrlPath = *resctrlPath
+	runtimeStats.Commandline.Runs = *runs
+	runtimeStats.Commandline.Threads = *threads
+	runtimeStats.Commandline.VarianceDiff = *varianceDiff
+
 	file, err := os.Create("coBench.config")
 	if err != nil {
 		return fmt.Errorf("Error while creating file: %v", err)

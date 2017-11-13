@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 var referenceRuntimes map[string]runtimeT
@@ -26,6 +27,8 @@ func main() {
 		log.Fatalf("Could not save config: %v\n", err)
 	}
 
+	defer cleanup()
+
 	commandPairs := generateCommandPairs(commands)
 
 	referenceRuntimes = make(map[string]runtimeT, len(commandPairs))
@@ -38,6 +41,13 @@ func main() {
 	}
 
 	coSchedRuns(commandPairs)
+}
+
+func cleanup() {
+	err := storeToFile(time.Now().Format("06-01-02-15-04-05.result.json"))
+	if err != nil {
+		log.Fatalf("Error while writing measurements to file: %v\n", err)
+	}
 }
 
 func individualRuns(commands []string) {
