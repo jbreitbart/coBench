@@ -8,9 +8,11 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jbreitbart/coBench/stats"
 )
 
-var referenceRuntimes map[string]runtimeT
+var referenceRuntimes map[string]stats.RuntimeT
 
 func main() {
 	commandFile := parseArgs()
@@ -31,7 +33,7 @@ func main() {
 
 	commandPairs := generateCommandPairs(commands)
 
-	referenceRuntimes = make(map[string]runtimeT, len(commandPairs))
+	referenceRuntimes = make(map[string]stats.RuntimeT, len(commandPairs))
 
 	// run apps individually
 	individualRuns(commands)
@@ -44,7 +46,7 @@ func main() {
 }
 
 func cleanup() {
-	err := storeToFile(time.Now().Format("06-01-02-15-04-05.result.json"))
+	err := stats.StoreToFile(time.Now().Format("06-01-02-15-04-05.result.json"))
 	if err != nil {
 		log.Fatalf("Error while writing measurements to file: %v\n", err)
 	}
@@ -63,11 +65,11 @@ func individualRuns(commands []string) {
 		if err != nil {
 			log.Fatalf("Error running application individually: %v\n", err)
 		}
-		stat := computeRuntimeStats(r)
+		stat := stats.ComputeRuntimeStats(r)
 		referenceRuntimes[c] = stat
-		printStats(c, stat, catConfig[0])
+		//printStats(c, stat, catConfig[0])
 
-		addReferenceTime(c, stat)
+		stats.AddReferenceTime(c, stat)
 	}
 
 	if !*cat {
@@ -95,11 +97,11 @@ func individualRuns(commands []string) {
 			if err != nil {
 				log.Fatalf("Error running application individually: %v\n", err)
 			}
-			stat := computeRuntimeStats(runtime)
+			stat := stats.ComputeRuntimeStats(runtime)
 
-			printStats(c, stat, catConfig[0])
+			//printStats(c, stat, catConfig[0])
 
-			addCATRuntime(c, catConfig[0], stat)
+			stats.AddCATRuntime(c, catConfig[0], stat)
 		}
 	}
 
@@ -123,7 +125,7 @@ func coSchedRuns(commandPairs [][2]string) {
 			log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
 		}
 
-		err = processRuntime(i, c, catConfig, runtimes)
+		err = stats.ProcessRuntime(i, c, catConfig, runtimes)
 		if err != nil {
 			log.Fatalf("Error processing runtime: %v", err)
 		}
@@ -155,7 +157,8 @@ func coSchedRuns(commandPairs [][2]string) {
 				log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
 			}
 
-			err = processRuntime(i, c, catConfig, runtimes)
+			err = stats.ProcessRuntime(i, c, catConfig, runtimes)
+			// TODO add printStats
 			if err != nil {
 				log.Fatalf("Error processing runtime: %v", err)
 			}

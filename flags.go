@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/jbreitbart/coBench/stats"
 )
 
 // global command line parameters
@@ -58,16 +60,7 @@ func parseArgs() *string {
 
 func storeConfig(commands []string) error {
 
-	runtimeStats.Commandline.CAT = *cat
-	runtimeStats.Commandline.CATChunk = *catBitChunk
-	runtimeStats.Commandline.CATDirs = catDirs
-	runtimeStats.Commandline.CPUs = cpus
-	runtimeStats.Commandline.Commands = commands
-	runtimeStats.Commandline.HermitCore = *hermitcore
-	runtimeStats.Commandline.ResctrlPath = *resctrlPath
-	runtimeStats.Commandline.Runs = *runs
-	runtimeStats.Commandline.Threads = *threads
-	runtimeStats.Commandline.VarianceDiff = *varianceDiff
+	stats.SetCommandline(*cat, *catBitChunk, catDirs, cpus, commands, *hermitcore, *resctrlPath, *runs, *threads, *varianceDiff)
 
 	file, err := os.Create("coBench.config")
 	if err != nil {
