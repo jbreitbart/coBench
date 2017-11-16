@@ -41,7 +41,11 @@ func runSingle(c string, id int, catConfig [2]uint64) ([]time.Duration, error) {
 		}
 	}
 
-	filename := fmt.Sprintf("%v.log", id)
+	filename := fmt.Sprintf("%v", id)
+	if catConfig[0] != 0 && catConfig[1] != 0 {
+		filename += fmt.Sprintf("-%x", catConfig[0])
+	}
+	filename += ".log"
 	cmd, outFile, err := setupCmd(c, 0, filename)
 	if err != nil {
 		return nil, err
@@ -86,8 +90,8 @@ func runPair(cPair [2]string, id int, catConfig [2]uint64) ([][]time.Duration, e
 	// setup commands
 	for i, _ := range cmds {
 		filename := fmt.Sprintf("%v-%v", id, i)
-		if *cat {
-			filename += fmt.Sprintf("-%x", catConfig[i])
+		if catConfig[0] != 0 && catConfig[1] != 0 {
+			filename += fmt.Sprintf("-%x", catConfig[0])
 		}
 		filename += ".log"
 
