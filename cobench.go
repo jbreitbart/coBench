@@ -23,9 +23,7 @@ func main() {
 		log.Fatal("You must provide at least 2 commands")
 	}
 
-	if err := storeConfig(commands); err != nil {
-		log.Fatalf("Could not save config: %v\n", err)
-	}
+	storeConfig(commands)
 
 	defer cleanup()
 

@@ -58,34 +58,8 @@ func parseArgs() *string {
 	return commandFile
 }
 
-func storeConfig(commands []string) error {
+func storeConfig(commands []string) {
 
 	stats.SetCommandline(*cat, *catBitChunk, catDirs, cpus, commands, *hermitcore, *resctrlPath, *runs, *threads, *varianceDiff)
 
-	file, err := os.Create("coBench.config")
-	if err != nil {
-		return fmt.Errorf("Error while creating file: %v", err)
-	}
-
-	out := fmt.Sprintf("Runs: %v \n", *runs)
-	out += fmt.Sprintf("Variance diff: %v \n", *varianceDiff)
-
-	out += fmt.Sprintf("CPUs: %v \n", cpus)
-	out += fmt.Sprintf("Threads: %v \n", *threads)
-
-	out += fmt.Sprintf("HermitCore: %v \n", *hermitcore)
-
-	out += fmt.Sprintf("CAT: %v \n", *cat)
-	out += fmt.Sprintf("CAT chunk: %v \n", *catBitChunk)
-	out += fmt.Sprintf("CAT dirs: %v \n", catDirs)
-	out += fmt.Sprintf("resctrlPath: %v \n", *resctrlPath)
-
-	out += fmt.Sprintf("Commands: %v \n", commands)
-
-	_, err = file.WriteString(out)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
