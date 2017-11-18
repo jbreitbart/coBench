@@ -82,7 +82,7 @@ func readCATInfo() (minBits uint64, numBits uint64, err error) {
 		}
 	}
 
-	fmt.Printf("%v - %v\n", minBits, numBits)
+	fmt.Printf("CAT Config:\n\t Min CBM Bits: %v\n\t CBM Mask Bits: %v\n", minBits, numBits)
 
 	err = nil
 	return

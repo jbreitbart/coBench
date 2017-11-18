@@ -1,9 +1,8 @@
 package stats
 
 import (
-	"encoding/binary"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"log"
 	"time"
@@ -11,76 +10,7 @@ import (
 	"github.com/montanaflynn/stats"
 )
 
-// used as a key
-type coSchedCATKey struct {
-	Application string
-	CAT         uint64
-}
-
-func (k coSchedCATKey) MarshalText() ([]byte, error) {
-	c := make([]byte, 8)
-	binary.LittleEndian.PutUint64(c, k.CAT)
-
-	a := []byte(k.Application)
-
-	return append(c, a...), nil
-}
-
-func (k coSchedCATKey) UnmarshalText(text []byte) error {
-	c := text[0:8]
-	k.CAT = binary.LittleEndian.Uint64(c)
-
-	k.Application = string(text[8:])
-
-	return nil
-}
-
-type StatsT struct {
-	// Application command line as a key
-	Runtimes map[string]*RuntimePerAppT
-
-	// Command line options passed to coBench
-	Commandline CommandlineT
-}
-
-type CommandlineT struct {
-	Runs         int
-	VarianceDiff float64
-	CPUs         [2]string
-	Threads      string
-	HermitCore   bool
-	CAT          bool
-	CATChunk     uint64
-	CATDirs      []string
-	ResctrlPath  string
-	Commands     []string
-}
-
-type RuntimePerAppT struct {
-	// individual run
-	ReferenceRuntimes RuntimeT
-
-	// individual runtime with CAT config used as key
-	CATRuntimes *map[uint64]RuntimeT
-
-	// runtime coScheduling without CAT
-	CoSchedRuntimes *map[string]RuntimeT
-
-	// runtime coScheduling with CAT
-	CoSchedCATRuntimes *map[coSchedCATKey]RuntimeT
-}
-
-type RuntimeT struct {
-	Mean       float64
-	Stddev     float64
-	Vari       float64
-	RuntimeSum float64
-	Runs       int
-	RawRuntime []time.Duration
-}
-
-// global variable that keeps track of everything
-var runtimeStats StatsT
+// TODO comment functions! :)
 
 func checkIfReferenceExists(application string) {
 	if _, ok := runtimeStats.Runtimes[application]; !ok {
@@ -88,7 +18,15 @@ func checkIfReferenceExists(application string) {
 	}
 }
 
-func AddReferenceTime(application string, referenceTime RuntimeT) {
+func GetReferenceRuntime(application string) (*RuntimeT, error) {
+	_, exists := runtimeStats.Runtimes[application]
+	if exists {
+		return &runtimeStats.Runtimes[application].ReferenceRuntimes, nil
+	}
+	return nil, errors.New("Reference runtime for " + application + " not available.")
+}
+
+func AddReferenceRuntime(application string, referenceTime RuntimeT) {
 	var temp RuntimePerAppT
 	temp.ReferenceRuntimes = referenceTime
 
@@ -167,41 +105,6 @@ func ComputeRuntimeStats(runtime []time.Duration) RuntimeT {
 	stat.RawRuntime = runtime
 
 	return stat
-}
-
-func ProcessRuntime(id int, cPair [2]string, catMasks [2]uint64, runtimes [][]time.Duration) error {
-
-	for i, runtime := range runtimes {
-		stat := ComputeRuntimeStats(runtime)
-
-		printStats(cPair[i], stat, catMasks[i])
-
-		if catMasks[0] != 0 && catMasks[1] != 0 {
-			AddCoSchedCATRuntime(cPair[i], cPair[(i+1)%2], catMasks[i], stat)
-		} else {
-			AddCoSchedRuntime(cPair[i], cPair[(i+1)%2], stat)
-		}
-	}
-
-	return nil
-}
-
-func printStats(c string, stat RuntimeT, catMask uint64) {
-	s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %3d runs", c, stat.Mean, stat.Stddev, stat.Vari, stat.Runs)
-	if catMask != 0 {
-		s += fmt.Sprintf("\t %6x CAT", catMask)
-	} else {
-		s += "\t           "
-	}
-
-	/*ref, ok := referenceRuntimes[c]
-	if ok {
-		s += fmt.Sprintf("\t %1.6f co-slowdown", stat.Mean/ref.Mean)
-	} else {
-		s += "\t ref missing"
-	}*/
-
-	fmt.Println(s)
 }
 
 func SetCommandline(cat bool, catBitChunk uint64, catDirs []string, cpus [2]string, commands []string, hermitcore bool, resctrlPath string, runs int, threads string, varianceDiff float64) {

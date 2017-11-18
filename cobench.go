@@ -12,8 +12,6 @@ import (
 	"github.com/jbreitbart/coBench/stats"
 )
 
-var referenceRuntimes map[string]stats.RuntimeT
-
 func main() {
 	commandFile := parseArgs()
 
@@ -32,8 +30,6 @@ func main() {
 	defer cleanup()
 
 	commandPairs := generateCommandPairs(commands)
-
-	referenceRuntimes = make(map[string]stats.RuntimeT, len(commandPairs))
 
 	// run apps individually
 	individualRuns(commands)
@@ -66,10 +62,9 @@ func individualRuns(commands []string) {
 			log.Fatalf("Error running application individually: %v\n", err)
 		}
 		stat := stats.ComputeRuntimeStats(r)
-		referenceRuntimes[c] = stat
-		//printStats(c, stat, catConfig[0])
+		printStats(c, stat, catConfig[0])
 
-		stats.AddReferenceTime(c, stat)
+		stats.AddReferenceRuntime(c, stat)
 	}
 
 	if !*cat {
@@ -99,7 +94,7 @@ func individualRuns(commands []string) {
 			}
 			stat := stats.ComputeRuntimeStats(runtime)
 
-			//printStats(c, stat, catConfig[0])
+			printStats(c, stat, catConfig[0])
 
 			stats.AddCATRuntime(c, catConfig[0], stat)
 		}
@@ -125,7 +120,7 @@ func coSchedRuns(commandPairs [][2]string) {
 			log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
 		}
 
-		err = stats.ProcessRuntime(i, c, catConfig, runtimes)
+		err = processRuntime(i, c, catConfig, runtimes)
 		if err != nil {
 			log.Fatalf("Error processing runtime: %v", err)
 		}
@@ -157,13 +152,47 @@ func coSchedRuns(commandPairs [][2]string) {
 				log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
 			}
 
-			err = stats.ProcessRuntime(i, c, catConfig, runtimes)
-			// TODO add printStats
+			err = processRuntime(i, c, catConfig, runtimes)
 			if err != nil {
 				log.Fatalf("Error processing runtime: %v", err)
 			}
 		}
 	}
+}
+
+func processRuntime(id int, cPair [2]string, catMasks [2]uint64, runtimes [][]time.Duration) error {
+
+	for i, runtime := range runtimes {
+		stat := stats.ComputeRuntimeStats(runtime)
+
+		printStats(cPair[i], stat, catMasks[i])
+
+		if catMasks[0] != 0 && catMasks[1] != 0 {
+			stats.AddCoSchedCATRuntime(cPair[i], cPair[(i+1)%2], catMasks[i], stat)
+		} else {
+			stats.AddCoSchedRuntime(cPair[i], cPair[(i+1)%2], stat)
+		}
+	}
+
+	return nil
+}
+
+func printStats(c string, stat stats.RuntimeT, catMask uint64) {
+	s := fmt.Sprintf("%v \t %9.2fs avg. runtime \t %1.6f std. dev. \t %1.6f variance \t %3d runs", c, stat.Mean, stat.Stddev, stat.Vari, stat.Runs)
+	if catMask != 0 {
+		s += fmt.Sprintf("\t %6x CAT", catMask)
+	} else {
+		s += "\t           "
+	}
+
+	ref, err := stats.GetReferenceRuntime(c)
+	if err == nil {
+		s += fmt.Sprintf("\t %1.6f co-slowdown", stat.Mean/ref.Mean)
+	} else {
+		s += "\t ref missing"
+	}
+
+	fmt.Println(s)
 }
 
 func generateCommandPairs(commands []string) [][2]string {
