@@ -61,10 +61,10 @@ func individualRuns(commands []string) {
 		if err != nil {
 			log.Fatalf("Error running application individually: %v\n", err)
 		}
-		stat := stats.ComputeRuntimeStats(r)
+		stat := stats.ComputeRuntimeStats(r) // TODO remove this call
 		printStats(c, stat, catConfig[0])
 
-		stats.AddReferenceRuntime(c, stat)
+		stats.AddReferenceRuntime(c, r)
 	}
 
 	if !*cat {
@@ -92,11 +92,11 @@ func individualRuns(commands []string) {
 			if err != nil {
 				log.Fatalf("Error running application individually: %v\n", err)
 			}
-			stat := stats.ComputeRuntimeStats(runtime)
+			stat := stats.ComputeRuntimeStats(runtime) // TODO remove this call
 
 			printStats(c, stat, catConfig[0])
 
-			stats.AddCATRuntime(c, catConfig[0], stat)
+			stats.AddCATRuntime(c, catConfig[0], runtime)
 		}
 	}
 
@@ -163,14 +163,14 @@ func coSchedRuns(commandPairs [][2]string) {
 func processRuntime(id int, cPair [2]string, catMasks [2]uint64, runtimes [][]time.Duration) error {
 
 	for i, runtime := range runtimes {
-		stat := stats.ComputeRuntimeStats(runtime)
+		stat := stats.ComputeRuntimeStats(runtime) // TODO remove this call
 
 		printStats(cPair[i], stat, catMasks[i])
 
 		if catMasks[0] != 0 && catMasks[1] != 0 {
-			stats.AddCoSchedCATRuntime(cPair[i], cPair[(i+1)%2], catMasks[i], stat)
+			stats.AddCoSchedCATRuntime(cPair[i], cPair[(i+1)%2], catMasks[i], runtime)
 		} else {
-			stats.AddCoSchedRuntime(cPair[i], cPair[(i+1)%2], stat)
+			stats.AddCoSchedRuntime(cPair[i], cPair[(i+1)%2], runtime)
 		}
 	}
 

@@ -26,9 +26,9 @@ func GetReferenceRuntime(application string) (*RuntimeT, error) {
 	return nil, errors.New("Reference runtime for " + application + " not available.")
 }
 
-func AddReferenceRuntime(application string, referenceTime RuntimeT) {
+func AddReferenceRuntime(application string, runtime []time.Duration) {
 	var temp RuntimePerAppT
-	temp.ReferenceRuntimes = referenceTime
+	temp.ReferenceRuntimes = ComputeRuntimeStats(runtime)
 
 	if runtimeStats.Runtimes == nil {
 		runtimeStats.Runtimes = make(map[string]*RuntimePerAppT, 1)
@@ -36,27 +36,27 @@ func AddReferenceRuntime(application string, referenceTime RuntimeT) {
 	runtimeStats.Runtimes[application] = &temp
 }
 
-func AddCATRuntime(application string, CAT uint64, runtime RuntimeT) {
+func AddCATRuntime(application string, CAT uint64, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CATRuntimes == nil {
 		temp := make(map[uint64]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CATRuntimes = &temp
 	}
-	(*runtimeStats.Runtimes[application].CATRuntimes)[CAT] = runtime
+	(*runtimeStats.Runtimes[application].CATRuntimes)[CAT] = ComputeRuntimeStats(runtime)
 }
 
-func AddCoSchedRuntime(application string, coSchedApplication string, runtime RuntimeT) {
+func AddCoSchedRuntime(application string, coSchedApplication string, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CoSchedRuntimes == nil {
 		temp := make(map[string]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CoSchedRuntimes = &temp
 	}
-	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = runtime
+	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = ComputeRuntimeStats(runtime)
 }
 
-func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uint64, runtime RuntimeT) {
+func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uint64, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
 	key := coSchedCATKey{coSchedApplication, CAT}
@@ -65,7 +65,7 @@ func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uin
 		temp := make(map[coSchedCATKey]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CoSchedCATRuntimes = &temp
 	}
-	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[key] = runtime
+	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[key] = ComputeRuntimeStats(runtime)
 }
 
 func StoreToFile(filename string) error {
