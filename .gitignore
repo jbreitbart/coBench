@@ -32,3 +32,4 @@ res/
 analyzer/analyzer
 analyzer/*.dat
 analyzer/*.pdf
+analyzer/*.plot
