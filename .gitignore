@@ -26,7 +26,9 @@ _testmain.go
 coBench
 cmd.txt
 *.log
-*.time
 res/
-coBench.config
 *result.json
+
+analyzer/analyzer
+analyzer/*.dat
+analyzer/*.pdf

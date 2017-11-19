@@ -183,8 +183,8 @@ func printStats(c string, stat stats.RuntimeT, catMask uint64) {
 		s += "\t           "
 	}
 
-	ref, err := stats.GetReferenceRuntime(c)
-	if err == nil {
+	ref := stats.GetReferenceRuntime(c)
+	if ref != nil {
 		s += fmt.Sprintf("\t %1.6f co-slowdown", stat.Mean/ref.Mean)
 	} else {
 		s += "\t ref missing"

@@ -1,9 +1,6 @@
 package stats
 
 import (
-	"encoding/json"
-	"errors"
-	"io/ioutil"
 	"log"
 	"time"
 
@@ -12,18 +9,37 @@ import (
 
 // TODO comment functions! :)
 
+// GetAllApplications returns a string slice containing all applications that are currently stored
+func GetAllApplications() []string {
+	apps := make([]string, 0, len(runtimeStats.Runtimes))
+	for k := range runtimeStats.Runtimes {
+		apps = append(apps, k)
+	}
+
+	return apps
+}
+
+func GetAllCATRuntimes(application string) *map[uint64]RuntimeT {
+	temp, exists := runtimeStats.Runtimes[application]
+	if !exists {
+		return nil
+	}
+
+	return temp.CATRuntimes
+}
+
+func GetReferenceRuntime(application string) *RuntimeT {
+	_, exists := runtimeStats.Runtimes[application]
+	if exists {
+		return &runtimeStats.Runtimes[application].ReferenceRuntimes
+	}
+	return nil
+}
+
 func checkIfReferenceExists(application string) {
 	if _, ok := runtimeStats.Runtimes[application]; !ok {
 		log.Fatalln("Error while inserting CAT runtime. Application key does not exist.")
 	}
-}
-
-func GetReferenceRuntime(application string) (*RuntimeT, error) {
-	_, exists := runtimeStats.Runtimes[application]
-	if exists {
-		return &runtimeStats.Runtimes[application].ReferenceRuntimes, nil
-	}
-	return nil, errors.New("Reference runtime for " + application + " not available.")
 }
 
 func AddReferenceRuntime(application string, runtime []time.Duration) {
@@ -66,26 +82,6 @@ func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uin
 		runtimeStats.Runtimes[application].CoSchedCATRuntimes = &temp
 	}
 	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[key] = ComputeRuntimeStats(runtime)
-}
-
-func StoreToFile(filename string) error {
-	json, err := json.Marshal(runtimeStats)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(filename, json, 0644)
-	return err
-}
-
-func ReadFromFile(filename string) error {
-	raw, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(raw, &runtimeStats)
-	return err
 }
 
 func ComputeRuntimeStats(runtime []time.Duration) RuntimeT {

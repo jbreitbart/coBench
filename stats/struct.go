@@ -4,14 +4,6 @@ import (
 	"time"
 )
 
-type StatsT struct {
-	// Application command line as a key
-	Runtimes map[string]*RuntimePerAppT
-
-	// Command line options passed to coBench
-	Commandline CommandlineT
-}
-
 type CommandlineT struct {
 	Runs         int
 	VarianceDiff float64
@@ -23,6 +15,21 @@ type CommandlineT struct {
 	CATDirs      []string
 	ResctrlPath  string
 	Commands     []string
+}
+
+// Used as a key for maps
+type coSchedCATKey struct {
+	Application string
+	CAT         uint64
+}
+
+type RuntimeT struct {
+	Mean       float64
+	Stddev     float64
+	Vari       float64
+	RuntimeSum float64
+	Runs       int
+	RawRuntime []time.Duration
 }
 
 type RuntimePerAppT struct {
@@ -39,13 +46,12 @@ type RuntimePerAppT struct {
 	CoSchedCATRuntimes *map[coSchedCATKey]RuntimeT
 }
 
-type RuntimeT struct {
-	Mean       float64
-	Stddev     float64
-	Vari       float64
-	RuntimeSum float64
-	Runs       int
-	RawRuntime []time.Duration
+type StatsT struct {
+	// Application command line as a key
+	Runtimes map[string]*RuntimePerAppT
+
+	// Command line options passed to coBench
+	Commandline CommandlineT
 }
 
 // global variable that keeps track of everything
