@@ -66,11 +66,12 @@ func createIndvCATDatFiles(apps []string) []string {
 			if !exist {
 				log.Fatalln("Could not find key. Should never happen.")
 			}
-			out += strconv.FormatInt(int64(bits.OnesCount64(k)), 10) + " " + strconv.FormatFloat(v.Mean, 'E', -1, 64) + " " + strconv.FormatFloat(v.Stddev, 'E', -1, 64) + "\n"
+			out += strconv.FormatFloat(1.5*float64(bits.OnesCount64(k)), 'E', -1, 64) + " " + strconv.FormatFloat(v.Mean, 'E', -1, 64) + " " + strconv.FormatFloat(v.Stddev, 'E', -1, 64) + "\n"
 		}
 
 		ref := stats.GetReferenceRuntime(app)
-		out += "20 " + strconv.FormatFloat(ref.Mean, 'E', -1, 64) + " " + strconv.FormatFloat(ref.Stddev, 'E', -1, 64) + "\n"
+		// TODO fix hardcoded 20
+		out += strconv.FormatFloat(1.5*20, 'E', -1, 64) + " " + strconv.FormatFloat(ref.Mean, 'E', -1, 64) + " " + strconv.FormatFloat(ref.Stddev, 'E', -1, 64) + "\n"
 
 		err := ioutil.WriteFile(filename, []byte(out), 0644)
 		if err != nil {

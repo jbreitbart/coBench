@@ -26,7 +26,7 @@ func writeGNUPlotCATIndvFile(apps []string, filename []string) {
 	ret += "unset y2tics\n"
 	ret += "set border 3\n"
 
-	ret += "set xlabel 'CAT bits'\n"
+	ret += "set xlabel 'MB L3'\n"
 	ret += "set ylabel 'Runtime (s)'\n"
 
 	ret += "shadecolor = '#80E0A080'\n"
