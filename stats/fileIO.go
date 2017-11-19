@@ -15,11 +15,18 @@ func (k coSchedCATKey) MarshalText() ([]byte, error) {
 	return append(c, a...), nil
 }
 
-func (k coSchedCATKey) UnmarshalText(text []byte) error {
-	c := text[0:8]
+func (k *coSchedCATKey) UnmarshalText(text []byte) error {
+	c := text[:8]
 	k.CAT = binary.LittleEndian.Uint64(c)
 
 	k.Application = string(text[8:])
+	// TODO understand why there are 0bytes! Probably a bug...
+	for i := 8; i < len(text); i++ {
+		if text[i] != 0 {
+			k.Application = string(text[i:])
+			break
+		}
+	}
 
 	return nil
 }

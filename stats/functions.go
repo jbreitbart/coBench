@@ -19,7 +19,45 @@ func GetAllApplications() []string {
 	return apps
 }
 
-func GetAllCATRuntimes(application string) *map[uint64]RuntimeT {
+// GetCoSchedCATRuntimes returns the runtime of application when running in parallel to cosched with CAT
+func GetCoSchedCATRuntimes(application string, cosched string) *map[uint64]RuntimeT {
+	temp, exists := runtimeStats.Runtimes[application]
+	if !exists {
+		return nil
+	}
+
+	ret := make(map[uint64]RuntimeT, 0)
+
+	//log.Printf("Map: %v\n", *temp.CoSchedCATRuntimes)
+	log.Printf("Looking for pair (%v, %v):\n", application, cosched)
+	for k, v := range *temp.CoSchedCATRuntimes {
+		log.Printf("%v\n", k)
+		if k.Application == cosched {
+			log.Printf("\t found\n")
+			ret[k.CAT] = v
+		}
+	}
+
+	return &ret
+}
+
+// GetCoSchedRuntimes returns the runtime of application when running in parallel to cosched without CAT
+func GetCoSchedRuntimes(application string, cosched string) *RuntimeT {
+	temp, exists := runtimeStats.Runtimes[application]
+	if !exists {
+		return nil
+	}
+
+	ret, exists := (*temp.CoSchedRuntimes)[cosched]
+	if !exists {
+		return nil
+	}
+
+	return &ret
+}
+
+// GetIndvCATRuntimes
+func GetIndvCATRuntimes(application string) *map[uint64]RuntimeT {
 	temp, exists := runtimeStats.Runtimes[application]
 	if !exists {
 		return nil

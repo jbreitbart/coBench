@@ -193,6 +193,7 @@ func printStats(c string, stat stats.RuntimeT, catMask uint64) {
 	fmt.Println(s)
 }
 
+// TODO copied to analyzer. fix somehow...
 func generateCommandPairs(commands []string) [][2]string {
 	var pairs [][2]string
 	for i, c0 := range commands {
