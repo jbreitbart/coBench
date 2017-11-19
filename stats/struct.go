@@ -52,6 +52,8 @@ type StatsT struct {
 
 	// Command line options passed to coBench
 	Commandline CommandlineT
+
+	// TODO add hardware info
 }
 
 // global variable that keeps track of everything

@@ -33,13 +33,23 @@ func main() {
 	}
 	log.Println("")
 
+	CATDatFiles := createIndvCATDatFiles(apps)
+	writeGNUPlotCATIndvFile(apps, CATDatFiles)
+}
+
+// Returns the filenames
+func createIndvCATDatFiles(apps []string) []string {
+	log.Println("Creating dat files for individual CAT runs.")
+
+	ret := make([]string, 0)
+
 	for i, app := range apps {
 		catRuntime := stats.GetAllCATRuntimes(app)
 		if catRuntime == nil {
 			continue
 		}
 
-		filename := indvCATRuntime(i)
+		filename := indvCATDatFilename(i)
 		out := "# " + app + "\n"
 		out += "# Bits Runtime Std.Dev.\n"
 
@@ -66,37 +76,13 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error while write file %v: %v", filename, err)
 		}
-	}
 
-	err = ioutil.WriteFile("indv-cat.plot", []byte(gnuplotStringCAT(apps)), 0644)
-	if err != nil {
-		log.Fatalf("Error while write file indv-cat.plot: %v", err)
-	}
-}
-
-func indvCATRuntime(i int) string {
-	return strconv.FormatInt(int64(i), 10) + "-cat.dat"
-}
-
-func gnuplotStringCAT(apps []string) string {
-	var ret string
-	ret += "set terminal pdf\n"
-	ret += "set output 'indv-cat.pdf'\n"
-
-	ret += "set yrange [0:*]\n"
-	ret += "set key right bottom\n"
-	ret += "unset x2tics\n"
-	ret += "unset y2tics\n"
-	ret += "set border 3\n"
-
-	ret += "set xlabel 'CAT bits'\n"
-	ret += "set ylabel 'Runtime (s)'\n"
-
-	ret += "Shadecolor = '#80E0A080'\n"
-
-	for i, app := range apps {
-		ret += "plot '" + indvCATRuntime(i) + "' using 1:($2+$3):($2-$3) with filledcurve fc rgb Shadecolor title 'Std. dev.', '' using 1:2 smooth mcspline lw 2 title 'Mean runtime (" + app + ")'\n"
+		ret = append(ret, filename)
 	}
 
 	return ret
+}
+
+func indvCATDatFilename(i int) string {
+	return strconv.FormatInt(int64(i), 10) + "-cat.dat"
 }
