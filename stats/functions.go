@@ -87,6 +87,7 @@ func AddReferenceRuntime(application string, runtime []time.Duration) {
 	if runtimeStats.Runtimes == nil {
 		runtimeStats.Runtimes = make(map[string]*RuntimePerAppT, 1)
 	}
+	// TODO check if already available and sum up?
 	runtimeStats.Runtimes[application] = &temp
 }
 
@@ -97,6 +98,7 @@ func AddCATRuntime(application string, CAT uint64, runtime []time.Duration) {
 		temp := make(map[uint64]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CATRuntimes = &temp
 	}
+	// TODO check if already available and sum up?
 	(*runtimeStats.Runtimes[application].CATRuntimes)[CAT] = ComputeRuntimeStats(runtime)
 }
 
@@ -107,6 +109,7 @@ func AddCoSchedRuntime(application string, coSchedApplication string, runtime []
 		temp := make(map[string]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CoSchedRuntimes = &temp
 	}
+	// TODO check if already available and sum up?
 	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = ComputeRuntimeStats(runtime)
 }
 
@@ -119,9 +122,11 @@ func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uin
 		temp := make(map[coSchedCATKey]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CoSchedCATRuntimes = &temp
 	}
+	// TODO check if already available and sum up?
 	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[key] = ComputeRuntimeStats(runtime)
 }
 
+// ComputeRuntimeStats creates a RuntimeT object based on the runtime
 func ComputeRuntimeStats(runtime []time.Duration) RuntimeT {
 	var stat RuntimeT
 	var runtimeSeconds []float64
