@@ -17,12 +17,6 @@ type CommandlineT struct {
 	Commands     []string
 }
 
-// Used as a key for maps
-type coSchedCATKey struct {
-	Application string
-	CAT         uint64
-}
-
 type RuntimeT struct {
 	Mean       float64
 	Stddev     float64
@@ -43,7 +37,7 @@ type RuntimePerAppT struct {
 	CoSchedRuntimes *map[string]RuntimeT
 
 	// runtime coScheduling with CAT
-	CoSchedCATRuntimes *map[coSchedCATKey]RuntimeT
+	CoSchedCATRuntimes *map[string]map[uint64]RuntimeT
 }
 
 type StatsT struct {
@@ -57,4 +51,4 @@ type StatsT struct {
 }
 
 // global variable that keeps track of everything
-var runtimeStats StatsT
+var runtimeStats StatsT // TODO we should not keep a global state in the package

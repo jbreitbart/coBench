@@ -11,12 +11,7 @@ import (
 
 // GetAllApplications returns a string slice containing all applications that are currently stored
 func GetAllApplications() []string {
-	apps := make([]string, 0, len(runtimeStats.Runtimes))
-	for k := range runtimeStats.Runtimes {
-		apps = append(apps, k)
-	}
-
-	return apps
+	return runtimeStats.Commandline.Commands
 }
 
 // GetCoSchedCATRuntimes returns the runtime of application when running in parallel to cosched with CAT
@@ -26,19 +21,12 @@ func GetCoSchedCATRuntimes(application string, cosched string) *map[uint64]Runti
 		return nil
 	}
 
-	ret := make(map[uint64]RuntimeT, 0)
-
-	//log.Printf("Map: %v\n", *temp.CoSchedCATRuntimes)
-	log.Printf("Looking for pair (%v, %v):\n", application, cosched)
-	for k, v := range *temp.CoSchedCATRuntimes {
-		log.Printf("%v\n", k)
-		if k.Application == cosched {
-			log.Printf("\t found\n")
-			ret[k.CAT] = v
-		}
+	ret, exists := (*(*temp).CoSchedCATRuntimes)[cosched]
+	if exists {
+		return &ret
 	}
 
-	return &ret
+	return nil
 }
 
 // GetCoSchedRuntimes returns the runtime of application when running in parallel to cosched without CAT
@@ -116,14 +104,17 @@ func AddCoSchedRuntime(application string, coSchedApplication string, runtime []
 func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uint64, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
-	key := coSchedCATKey{coSchedApplication, CAT}
-
 	if runtimeStats.Runtimes[application].CoSchedCATRuntimes == nil {
-		temp := make(map[coSchedCATKey]RuntimeT, 1)
+		temp := make(map[string]map[uint64]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CoSchedCATRuntimes = &temp
 	}
+	if (*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication] == nil {
+		temp := make(map[uint64]RuntimeT, 1)
+		(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication] = temp
+	}
+
 	// TODO check if already available and sum up?
-	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[key] = ComputeRuntimeStats(runtime)
+	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][CAT] = ComputeRuntimeStats(runtime)
 }
 
 // ComputeRuntimeStats creates a RuntimeT object based on the runtime
