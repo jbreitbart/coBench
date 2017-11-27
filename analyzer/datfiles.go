@@ -7,29 +7,16 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/jbreitbart/coBench/commands"
 	"github.com/jbreitbart/coBench/stats"
 )
-
-// TODO copied from coBench. fix somehow...
-func generateCommandPairs(commands []string) [][2]string {
-	var pairs [][2]string
-	for i, c0 := range commands {
-		for j, c1 := range commands {
-			if i >= j {
-				continue
-			}
-			pairs = append(pairs, [2]string{c0, c1})
-		}
-	}
-	return pairs
-}
 
 func createCoSchedCATDatFiles(apps []string) []string {
 	log.Println("Creating dat files for co-scheduling CAT runs.")
 
 	ret := make([]string, 0)
 
-	pairs := generateCommandPairs(apps)
+	pairs := commands.GeneratePairs(apps)
 
 	for _, pair := range pairs {
 		r0 := stats.GetCoSchedCATRuntimes(pair[0], pair[1])

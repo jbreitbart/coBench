@@ -1,41 +1,43 @@
 package main
 
 import (
-	"bufio"
-	"errors"
 	"fmt"
 	"log"
-	"os"
-	"strings"
 	"time"
 
+	"github.com/jbreitbart/coBench/commands"
 	"github.com/jbreitbart/coBench/stats"
 )
 
 func main() {
 	commandFile := parseArgs()
 
-	commands, err := readCommands(*commandFile)
+	commandStrings, err := commands.Read(*commandFile)
 	if err != nil {
 		log.Fatalf("Error reading command file %v: %v", *commandFile, err)
 	}
-	if len(commands) < 2 {
+	if len(commandStrings) < 2 {
 		log.Fatal("You must provide at least 2 commands")
 	}
 
-	storeConfig(commands)
+	storeConfig(commandStrings)
 
 	defer cleanup()
 
-	commandPairs := generateCommandPairs(commands)
+	indvCommands := commands.GenerateIndv(commandStrings)
+
+	if len(indvCommands) != len(commandStrings) {
+		log.Printf("Remove %v duplicates from commands for individual runs.\n", len(commandStrings)-len(indvCommands))
+	}
 
 	// run apps individually
-	individualRuns(commands)
+	individualRuns(commandStrings)
 
 	if *noCoSched {
 		return
 	}
 
+	commandPairs := commands.GeneratePairs(commandStrings)
 	coSchedRuns(commandPairs)
 }
 
@@ -191,43 +193,4 @@ func printStats(c string, stat stats.RuntimeT, catMask uint64) {
 	}
 
 	fmt.Println(s)
-}
-
-// TODO copied to analyzer. fix somehow...
-func generateCommandPairs(commands []string) [][2]string {
-	var pairs [][2]string
-	for i, c0 := range commands {
-		for j, c1 := range commands {
-			if i >= j {
-				continue
-			}
-			pairs = append(pairs, [2]string{c0, c1})
-		}
-	}
-	return pairs
-}
-
-func readCommands(filename string) ([]string, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, errors.New("Error opening file " + filename + ": " + err.Error())
-	}
-	defer file.Close()
-
-	var commands []string
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		temp := scanner.Text()
-		temp = strings.TrimSpace(temp)
-		if len(temp) > 0 && temp[0] != '#' {
-			commands = append(commands, scanner.Text())
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, errors.New("Error scanning commands: " + err.Error())
-	}
-
-	return commands, nil
 }
