@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 
+	"github.com/jbreitbart/coBench/commands"
 	"github.com/jbreitbart/coBench/stats"
 )
 
@@ -29,8 +30,11 @@ func main() {
 	}
 	log.Println("")
 
-	CATDatFiles := createIndvCATDatFiles(apps)
-	writeGNUPlotCATIndvFile(apps, CATDatFiles)
+	indvApps := commands.GenerateIndv(apps)
+	CATDatFiles := createIndvCATDatFiles(indvApps)
+	writeGNUPlotCATIndvFile(indvApps, CATDatFiles)
 
-	createCoSchedCATDatFiles(apps)
+	pairs := commands.GeneratePairs(apps)
+	CATCoSchedDatFiles := createCoSchedCATDatFiles(pairs)
+	writeGNUPlotCATCoSchedFile(pairs, CATCoSchedDatFiles)
 }

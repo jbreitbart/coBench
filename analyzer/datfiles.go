@@ -7,16 +7,25 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/jbreitbart/coBench/commands"
 	"github.com/jbreitbart/coBench/stats"
 )
 
-func createCoSchedCATDatFiles(apps []string) []string {
+func sortedKeys(r *map[uint64]stats.RuntimeT) []uint64 {
+	var sortedKeys []uint64
+	for k := range *r {
+		sortedKeys = append(sortedKeys, k)
+	}
+	sort.Slice(sortedKeys[:], func(i, j int) bool {
+		return bits.OnesCount64(sortedKeys[i]) < bits.OnesCount64(sortedKeys[j])
+	})
+
+	return sortedKeys
+}
+
+func createCoSchedCATDatFiles(pairs [][2]string) []string {
 	log.Println("Creating dat files for co-scheduling CAT runs.")
 
 	ret := make([]string, 0)
-
-	pairs := commands.GeneratePairs(apps)
 
 	for _, pair := range pairs {
 		r0 := stats.GetCoSchedCATRuntimes(pair[0], pair[1])
@@ -35,27 +44,14 @@ func createCoSchedCATDatFiles(apps []string) []string {
 		out += "# 1: " + pair[1] + "\n"
 		out += "# L3(0) Runtime(0) Std.Dev.(0) Runtime(1) Std.Dev(1)\n"
 
-		// TODO extract as a function
-		var sortedKeys0 []uint64
-		for k, _ := range *r0 {
-			sortedKeys0 = append(sortedKeys0, k)
-		}
-		sort.Slice(sortedKeys0[:], func(i, j int) bool {
-			return bits.OnesCount64(sortedKeys0[i]) < bits.OnesCount64(sortedKeys0[j])
-		})
-		var sortedKeys1 []uint64
-		for k, _ := range *r1 {
-			sortedKeys1 = append(sortedKeys1, k)
-		}
-		sort.Slice(sortedKeys1[:], func(i, j int) bool {
-			return bits.OnesCount64(sortedKeys1[i]) > bits.OnesCount64(sortedKeys1[j])
-		})
+		sortedKeys0 := sortedKeys(r0)
+		sortedKeys1 := sortedKeys(r1)
 
 		if len(sortedKeys0) != len(sortedKeys1) {
 			log.Fatalf("CAT co-scheduling data inconsistent: len: %v - %v\n", len(sortedKeys0), len(sortedKeys1))
 		}
 
-		for i, _ := range sortedKeys0 {
+		for i := range sortedKeys0 {
 			k0 := sortedKeys0[i]
 			k1 := sortedKeys1[i]
 			v0, exist := (*r0)[k0]
@@ -105,13 +101,7 @@ func createIndvCATDatFiles(apps []string) []string {
 		out := "# " + app + "\n"
 		out += "# L3 Runtime Std.Dev.\n"
 
-		var sortedKeys []uint64
-		for k, _ := range *catRuntime {
-			sortedKeys = append(sortedKeys, k)
-		}
-		sort.Slice(sortedKeys[:], func(i, j int) bool {
-			return bits.OnesCount64(sortedKeys[i]) < bits.OnesCount64(sortedKeys[j])
-		})
+		sortedKeys := sortedKeys(catRuntime)
 
 		for _, k := range sortedKeys {
 			v, exist := (*catRuntime)[k]
