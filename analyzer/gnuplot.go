@@ -33,10 +33,10 @@ func writeGNUPlotCATCoSchedFile(pairs [][2]string, filename []string) {
 
 	for i, pair := range pairs {
 		ret += "plot '" + filename[i]
-		ret += "' using 1:($2+$3):($2-$3) with filledcurve fc rgb shadecolor title 'Std. dev. (" + prettyAppCmd(pair[0]) + ")', "
-		ret += "'' using 1:2 smooth mcspline lw 2 title 'Mean runtime (" + prettyAppCmd(pair[0]) + ")', "
-		ret += "'' using 1:($4+$5):($4-$5) with filledcurve fc rgb shadecolor title 'Std. dev. (" + prettyAppCmd(pair[1]) + ")', "
-		ret += "'' using 1:4 smooth mcspline lw 2 title 'Mean runtime (" + prettyAppCmd(pair[1]) + ")'\n"
+		ret += "' using 1:($2+$3):($2-$3) with filledcurve fc rgb shadecolor title 'Std. dev. (" + gnuplotEscape(prettyAppCmd(pair[0])) + ")', "
+		ret += "'' using 1:2 smooth mcspline lw 2 title 'Mean runtime (" + gnuplotEscape(prettyAppCmd(pair[0])) + ")', "
+		ret += "'' using 1:($4+$5):($4-$5) with filledcurve fc rgb shadecolor title 'Std. dev. (" + gnuplotEscape(prettyAppCmd(pair[1])) + ")', "
+		ret += "'' using 1:4 smooth mcspline lw 2 title 'Mean runtime (" + gnuplotEscape(prettyAppCmd(pair[1])) + ")'\n"
 	}
 
 	err := ioutil.WriteFile("co-sched-cat.plot", []byte(ret), 0644)
@@ -71,13 +71,20 @@ func writeGNUPlotCATIndvFile(apps []string, filename []string) {
 	ret += "shadecolor = '#80E0A080'\n"
 
 	for i, app := range apps {
-		ret += "plot '" + filename[i] + "' using 1:($2+$3):($2-$3) with filledcurve fc rgb shadecolor title 'Std. dev.', '' using 1:2 smooth mcspline lw 2 title 'Mean runtime (" + prettyAppCmd(app) + ")'\n"
+		ret += "plot '" + filename[i] + "' using 1:($2+$3):($2-$3) with filledcurve fc rgb shadecolor title 'Std. dev.', '' using 1:2 smooth mcspline lw 2 title 'Mean runtime (" + gnuplotEscape(prettyAppCmd(app)) + ")'\n"
 	}
 
 	err := ioutil.WriteFile("indv-cat.plot", []byte(ret), 0644)
 	if err != nil {
 		log.Fatalf("Error while write file indv-cat.plot: %v", err)
 	}
+}
+
+// only supports some characters
+func gnuplotEscape(s string) string {
+	ret := strings.Replace(s, "_", "\\_", -1)
+
+	return ret
 }
 
 func prettyAppCmd(app string) string {
@@ -87,8 +94,5 @@ func prettyAppCmd(app string) string {
 		space = len(app)
 	}
 
-	ret := app[slash+1 : space]
-	ret = strings.Replace(ret, "_", "\\_", -1)
-
-	return ret
+	return app[slash+1 : space]
 }
