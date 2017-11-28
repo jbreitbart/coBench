@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"math/bits"
 	"reflect"
 	"testing"
 	"time"
@@ -25,10 +26,20 @@ func testSetup(t *testing.T, apps []string) {
 		}
 		AddReferenceRuntime(app, r)
 
-		for CAT := uint64(0); CAT < 16; CAT += 2 {
+		for _, CAT := range getCATMasks() {
+			r := make([]time.Duration, 10)
+			for i := 0; i < 10; i++ {
+				r[i] = time.Duration(CAT) * time.Duration(i)
+			}
 			AddCATRuntime(app, CAT, r)
 		}
 	}
+
+	r := make([]time.Duration, 10)
+	for i := 0; i < 10; i++ {
+		r[i] = time.Duration(i * i)
+	}
+	AddCoSchedRuntime(apps[0], apps[1], r)
 
 	SetCommandline(false, 2, []string{"/tmp", "/tmp2"}, [2]string{"0-2", "3-5"}, apps, false, "/sys/fs/res/", 15, "3", 0.002)
 }
@@ -39,7 +50,7 @@ func verifySetup(t *testing.T, apps []string) {
 		for i := 0; i < 10; i++ {
 			r[i] = time.Duration(i)
 		}
-		runtime := ComputeRuntimeStats(r)
+		runtime := ComputeRuntimeStats(r, NoCATMask, RuntimeT{})
 
 		ref := GetReferenceRuntime(app)
 		if !reflect.DeepEqual(*ref, runtime) {
@@ -47,15 +58,36 @@ func verifySetup(t *testing.T, apps []string) {
 		}
 
 		catRs := GetIndvCATRuntimes(app)
-		for CAT := uint64(0); CAT < 16; CAT += 2 {
-			c := (*catRs)[CAT]
+
+		for _, CAT := range getCATMasks() {
+			r := make([]time.Duration, 10)
+			for i := 0; i < 10; i++ {
+				r[i] = time.Duration(CAT) * time.Duration(i)
+			}
+			runtime := ComputeRuntimeStats(r, CAT, RuntimeT{})
+
+			c := (*catRs)[bits.OnesCount64(CAT)]
 			if !reflect.DeepEqual(c, runtime) {
 				t.Errorf("Comparision failure with GetIndvCATRuntimes for app %v.", app)
 			}
 		}
 	}
 
+	r := make([]time.Duration, 10)
+	for i := 0; i < 10; i++ {
+		r[i] = time.Duration(i * i)
+	}
+	runtime := ComputeRuntimeStats(r, NoCATMask, RuntimeT{})
+	co := GetCoSchedRuntimes(apps[0], apps[1])
+	if !reflect.DeepEqual(*co, runtime) {
+		t.Errorf("Comparision failure with GetCoSchedRuntimes for apps %v.", apps)
+	}
+
 	if !reflect.DeepEqual(apps, GetAllApplications()) {
 		t.Errorf("Comparision failure with GetAllApplications for apps %v - %v.", apps, GetAllApplications())
 	}
+}
+
+func getCATMasks() []uint64 {
+	return []uint64{1, 3, 7}
 }

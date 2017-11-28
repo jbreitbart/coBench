@@ -2,6 +2,7 @@ package stats
 
 import (
 	"log"
+	"math/bits"
 	"time"
 
 	"github.com/montanaflynn/stats"
@@ -15,7 +16,7 @@ func GetAllApplications() []string {
 }
 
 // GetCoSchedCATRuntimes returns the runtime of application when running in parallel to cosched with CAT
-func GetCoSchedCATRuntimes(application string, cosched string) *map[uint64]RuntimeT {
+func GetCoSchedCATRuntimes(application string, cosched string) *map[int]RuntimeT {
 	temp, exists := runtimeStats.Runtimes[application]
 	if !exists {
 		return nil
@@ -45,13 +46,12 @@ func GetCoSchedRuntimes(application string, cosched string) *RuntimeT {
 }
 
 // GetIndvCATRuntimes
-func GetIndvCATRuntimes(application string) *map[uint64]RuntimeT {
-	temp, exists := runtimeStats.Runtimes[application]
-	if !exists {
-		return nil
+func GetIndvCATRuntimes(application string) *map[int]RuntimeT {
+	_, exists := runtimeStats.Runtimes[application]
+	if exists {
+		return runtimeStats.Runtimes[application].CATRuntimes
 	}
-
-	return temp.CATRuntimes
+	return nil
 }
 
 func GetReferenceRuntime(application string) *RuntimeT {
@@ -64,18 +64,23 @@ func GetReferenceRuntime(application string) *RuntimeT {
 
 func checkIfReferenceExists(application string) {
 	if _, ok := runtimeStats.Runtimes[application]; !ok {
-		log.Fatalln("Error while inserting CAT runtime. Application key does not exist.")
+		log.Fatalln("Error while inserting CAT runtime. Application key does not exist. Call AddReferenceRuntime() first.")
 	}
 }
 
 func AddReferenceRuntime(application string, runtime []time.Duration) {
-	var temp RuntimePerAppT
-	temp.ReferenceRuntimes = ComputeRuntimeStats(runtime)
-
 	if runtimeStats.Runtimes == nil {
 		runtimeStats.Runtimes = make(map[string]*RuntimePerAppT, 1)
 	}
-	// TODO check if already available and sum up?
+
+	var old RuntimeT
+
+	if runtimeStats.Runtimes[application] != nil {
+		old = runtimeStats.Runtimes[application].ReferenceRuntimes
+	}
+
+	var temp RuntimePerAppT
+	temp.ReferenceRuntimes = ComputeRuntimeStats(runtime, NoCATMask, old)
 	runtimeStats.Runtimes[application] = &temp
 }
 
@@ -83,11 +88,14 @@ func AddCATRuntime(application string, CAT uint64, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CATRuntimes == nil {
-		temp := make(map[uint64]RuntimeT, 1)
+		temp := make(map[int]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CATRuntimes = &temp
 	}
-	// TODO check if already available and sum up?
-	(*runtimeStats.Runtimes[application].CATRuntimes)[CAT] = ComputeRuntimeStats(runtime)
+
+	key := bits.OnesCount64(CAT)
+	old := (*runtimeStats.Runtimes[application].CATRuntimes)[key]
+
+	(*runtimeStats.Runtimes[application].CATRuntimes)[key] = ComputeRuntimeStats(runtime, CAT, old)
 }
 
 func AddCoSchedRuntime(application string, coSchedApplication string, runtime []time.Duration) {
@@ -97,46 +105,63 @@ func AddCoSchedRuntime(application string, coSchedApplication string, runtime []
 		temp := make(map[string]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CoSchedRuntimes = &temp
 	}
-	// TODO check if already available and sum up?
-	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = ComputeRuntimeStats(runtime)
+
+	old := (*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication]
+
+	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = ComputeRuntimeStats(runtime, NoCATMask, old)
 }
 
 func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uint64, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CoSchedCATRuntimes == nil {
-		temp := make(map[string]map[uint64]RuntimeT, 1)
+		temp := make(map[string]map[int]RuntimeT, 1)
 		runtimeStats.Runtimes[application].CoSchedCATRuntimes = &temp
 	}
 	if (*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication] == nil {
-		temp := make(map[uint64]RuntimeT, 1)
+		temp := make(map[int]RuntimeT, 1)
 		(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication] = temp
 	}
 
-	// TODO check if already available and sum up?
-	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][CAT] = ComputeRuntimeStats(runtime)
+	key := bits.OnesCount64(CAT)
+	old := (*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key]
+
+	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key] = ComputeRuntimeStats(runtime, CAT, old)
 }
 
 // ComputeRuntimeStats creates a RuntimeT object based on the runtime
-func ComputeRuntimeStats(runtime []time.Duration) RuntimeT {
-	var stat RuntimeT
+func ComputeRuntimeStats(runtime []time.Duration, CATMask uint64, old RuntimeT) RuntimeT {
+	// old will be updated and returned
+
+	if old.RawRuntimesByMask == nil {
+		temp := make(map[uint64][]time.Duration, 1)
+		old.RawRuntimesByMask = &temp
+	}
+	if _, exists := (*old.RawRuntimesByMask)[CATMask]; exists {
+		(*old.RawRuntimesByMask)[CATMask] = append((*old.RawRuntimesByMask)[CATMask], runtime...)
+	} else {
+		(*old.RawRuntimesByMask)[CATMask] = runtime
+	}
+
 	var runtimeSeconds []float64
-	for _, r := range runtime {
-		runtimeSeconds = append(runtimeSeconds, r.Seconds())
+	for _, v := range *old.RawRuntimesByMask {
+		for _, r := range v {
+			runtimeSeconds = append(runtimeSeconds, r.Seconds())
+		}
 	}
 
 	// TODO handle error?
-	stat.Mean, _ = stats.Mean(runtimeSeconds)
-	stat.Stddev, _ = stats.StandardDeviation(runtimeSeconds)
-	stat.Vari, _ = stats.Variance(runtimeSeconds)
-	stat.RuntimeSum, _ = stats.Sum(runtimeSeconds)
+	old.Mean, _ = stats.Mean(runtimeSeconds)
+	old.Stddev, _ = stats.StandardDeviation(runtimeSeconds)
+	old.Vari, _ = stats.Variance(runtimeSeconds)
+	old.RuntimeSum, _ = stats.Sum(runtimeSeconds)
 
-	stat.Runs = len(runtime)
-	stat.RawRuntime = runtime
+	old.Runs = len(runtimeSeconds)
 
-	return stat
+	return old
 }
 
+// SetCommandline stores the command line options in the config struct
 func SetCommandline(cat bool, catBitChunk uint64, catDirs []string, cpus [2]string, commands []string, hermitcore bool, resctrlPath string, runs int, threads string, varianceDiff float64) {
 	runtimeStats.Commandline.CAT = cat
 	runtimeStats.Commandline.CATChunk = catBitChunk

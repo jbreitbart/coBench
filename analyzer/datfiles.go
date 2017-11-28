@@ -3,20 +3,19 @@ package main
 import (
 	"io/ioutil"
 	"log"
-	"math/bits"
 	"sort"
 	"strconv"
 
 	"github.com/jbreitbart/coBench/stats"
 )
 
-func sortedKeys(r *map[uint64]stats.RuntimeT) []uint64 {
-	var sortedKeys []uint64
+func sortedKeys(r *map[int]stats.RuntimeT) []int {
+	var sortedKeys []int
 	for k := range *r {
 		sortedKeys = append(sortedKeys, k)
 	}
 	sort.Slice(sortedKeys[:], func(i, j int) bool {
-		return bits.OnesCount64(sortedKeys[i]) < bits.OnesCount64(sortedKeys[j])
+		return sortedKeys[i] < sortedKeys[j]
 	})
 
 	return sortedKeys
@@ -62,7 +61,7 @@ func createCoSchedCATDatFiles(pairs [][2]string) []string {
 			if !exist {
 				log.Fatalf("Could not find key %v. Should never happen.\n", k1)
 			}
-			out += strconv.FormatFloat(1.5*float64(bits.OnesCount64(k0)), 'E', -1, 64) + " "
+			out += strconv.FormatFloat(1.5*float64(k0), 'E', -1, 64) + " "
 			out += strconv.FormatFloat(v0.Mean, 'E', -1, 64) + " " + strconv.FormatFloat(v0.Stddev, 'E', -1, 64) + " "
 			out += strconv.FormatFloat(v1.Mean, 'E', -1, 64) + " " + strconv.FormatFloat(v1.Stddev, 'E', -1, 64) + "\n"
 		}
@@ -108,7 +107,7 @@ func createIndvCATDatFiles(apps []string) []string {
 			if !exist {
 				log.Fatalln("Could not find key. Should never happen.")
 			}
-			out += strconv.FormatFloat(1.5*float64(bits.OnesCount64(k)), 'E', -1, 64) + " " + strconv.FormatFloat(v.Mean, 'E', -1, 64) + " " + strconv.FormatFloat(v.Stddev, 'E', -1, 64) + "\n"
+			out += strconv.FormatFloat(1.5*float64(k), 'E', -1, 64) + " " + strconv.FormatFloat(v.Mean, 'E', -1, 64) + " " + strconv.FormatFloat(v.Stddev, 'E', -1, 64) + "\n"
 		}
 
 		ref := stats.GetReferenceRuntime(app)

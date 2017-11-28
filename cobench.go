@@ -54,14 +54,14 @@ func individualRuns(commands []string) {
 
 	// run app individually without CAT (if CAT was requested)
 	for i, c := range commands {
-		catConfig := [2]uint64{0, 0}
+		catConfig := [2]uint64{stats.NoCATMask, stats.NoCATMask}
 
 		fmt.Printf("Running %v\n", c)
 		r, err := runSingle(c, i, catConfig)
 		if err != nil {
 			log.Fatalf("Error running application individually: %v\n", err)
 		}
-		stat := stats.ComputeRuntimeStats(r) // TODO remove this call
+		stat := stats.ComputeRuntimeStats(r, catConfig[0], stats.RuntimeT{}) // TODO remove this call
 		printStats(c, stat, catConfig[0])
 
 		stats.AddReferenceRuntime(c, r)
@@ -71,11 +71,7 @@ func individualRuns(commands []string) {
 		return
 	}
 
-	minBits := uint64(0)
-	numBits := uint64(0)
-
-	var err error
-	minBits, numBits, err = setupCAT()
+	minBits, numBits, err := setupCAT()
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -92,7 +88,7 @@ func individualRuns(commands []string) {
 			if err != nil {
 				log.Fatalf("Error running application individually: %v\n", err)
 			}
-			stat := stats.ComputeRuntimeStats(runtime) // TODO remove this call
+			stat := stats.ComputeRuntimeStats(runtime, catConfig[0], stats.RuntimeT{}) // TODO remove this call
 
 			printStats(c, stat, catConfig[0])
 
@@ -100,7 +96,7 @@ func individualRuns(commands []string) {
 		}
 	}
 
-	fmt.Println("Individual runs done. \n")
+	fmt.Println("Individual runs done.")
 }
 
 func coSchedRuns(commandPairs [][2]string) {
@@ -114,7 +110,7 @@ func coSchedRuns(commandPairs [][2]string) {
 		fmt.Printf("Running pair %v\n", i)
 		fmt.Println(c)
 
-		catConfig := [2]uint64{0, 0}
+		catConfig := [2]uint64{stats.NoCATMask, stats.NoCATMask}
 		runtimes, err := runPair(c, i, catConfig)
 		if err != nil {
 			log.Fatalf("Error while running pair %v (%v): %v", i, c, err)
@@ -130,11 +126,7 @@ func coSchedRuns(commandPairs [][2]string) {
 		return
 	}
 
-	minBits := uint64(0)
-	numBits := uint64(0)
-
-	var err error
-	minBits, numBits, err = setupCAT()
+	minBits, numBits, err := setupCAT()
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -163,7 +155,7 @@ func coSchedRuns(commandPairs [][2]string) {
 func processRuntime(id int, cPair [2]string, catMasks [2]uint64, runtimes [][]time.Duration) error {
 
 	for i, runtime := range runtimes {
-		stat := stats.ComputeRuntimeStats(runtime) // TODO remove this call
+		stat := stats.ComputeRuntimeStats(runtime, catMasks[i], stats.RuntimeT{}) // TODO remove this call
 
 		printStats(cPair[i], stat, catMasks[i])
 
