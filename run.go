@@ -11,16 +11,16 @@ import (
 	"github.com/montanaflynn/stats"
 )
 
-func setupCmd(c string, cpuId int, logFilename string) (*exec.Cmd, *os.File, error) {
+func setupCmd(c string, cpuID int, logFilename string) (*exec.Cmd, *os.File, error) {
 	env := os.Environ()
 	var cmd *exec.Cmd
 
 	if *hermitcore {
-		cmd = exec.Command("numactl", "--physcpubind", cpus[cpuId], "/bin/sh", "-c", c)
+		cmd = exec.Command("numactl", "--physcpubind", cpus[cpuID], "/bin/sh", "-c", c)
 		cmd.Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
 	} else {
 		cmd = exec.Command("/bin/sh", "-c", c)
-		cmd.Env = append(env, "GOMP_CPU_AFFINITY="+cpus[cpuId], "OMP_NUM_THREADS="+*threads)
+		cmd.Env = append(env, "GOMP_CPU_AFFINITY="+cpus[cpuID], "OMP_NUM_THREADS="+*threads)
 	}
 
 	outfile, err := os.Create(logFilename)
@@ -88,7 +88,7 @@ func runPair(cPair [2]string, id int, catConfig [2]uint64) ([][]time.Duration, e
 
 	var cmds [len(cpus)]*exec.Cmd
 	// setup commands
-	for i, _ := range cmds {
+	for i := range cmds {
 		filename := fmt.Sprintf("%v-%v", id, i)
 		if catConfig[0] != 0 && catConfig[1] != 0 {
 			filename += fmt.Sprintf("-%x", catConfig[0])

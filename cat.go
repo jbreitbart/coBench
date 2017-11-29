@@ -110,14 +110,14 @@ func setupCAT() (minBits uint64, numBits uint64, err error) {
 		var bitset uint64
 
 		// loop over every pair
-		for i := 0; i < len(cpuIDs); i += 2 {
+		for p := 0; p < len(cpuIDs); p += 2 {
 			var start, end uint64
-			start, err = strconv.ParseUint(cpuIDs[i], 10, 64)
+			start, err = strconv.ParseUint(cpuIDs[p], 10, 64)
 			if err != nil {
 				err = fmt.Errorf("Parse number: %v", start)
 				return
 			}
-			end, err = strconv.ParseUint(cpuIDs[i+1], 10, 64)
+			end, err = strconv.ParseUint(cpuIDs[p+1], 10, 64)
 			if err != nil {
 				err = fmt.Errorf("Parse number: %v", end)
 				return

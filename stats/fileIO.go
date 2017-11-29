@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 )
 
+// StoreToFile stores the current stats as json in a file
 func StoreToFile(filename string) error {
 	json, err := json.Marshal(runtimeStats)
 	if err != nil {
@@ -15,6 +16,7 @@ func StoreToFile(filename string) error {
 	return err
 }
 
+// ReadFromFile reads a json file stored by StoreToFile and updates the local state of the package
 func ReadFromFile(filename string) error {
 	raw, err := ioutil.ReadFile(filename)
 	if err != nil {
