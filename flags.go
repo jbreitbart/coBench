@@ -2,10 +2,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"os"
 
 	"github.com/jbreitbart/coBench/stats"
+	log "github.com/sirupsen/logrus"
 )
 
 // global command line parameters
@@ -44,12 +43,10 @@ func parseArgs() *string {
 	catDirs = []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
 
 	if *runs < 1 {
-		fmt.Println("runs must be > 0")
-		os.Exit(0)
+		log.Fatalln("runs must be > 0")
 	}
 	if *catBitChunk < 1 {
-		fmt.Println("catChunk must be > 0")
-		os.Exit(0)
+		log.Fatalln("catChunk must be > 0")
 	}
 
 	cpus[0] = *cpus0
@@ -59,7 +56,5 @@ func parseArgs() *string {
 }
 
 func storeConfig(commands []string) {
-
 	stats.SetCommandline(*cat, *catBitChunk, catDirs, cpus, commands, *hermitcore, *resctrlPath, *runs, *threads, *varianceDiff)
-
 }

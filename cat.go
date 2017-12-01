@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jbreitbart/coBench/bit"
+	log "github.com/sirupsen/logrus"
 )
 
 func generateCatConfigs(minBits uint64, numBits uint64) [][2]uint64 {
@@ -82,7 +83,10 @@ func readCATInfo() (minBits uint64, numBits uint64, err error) {
 		}
 	}
 
-	fmt.Printf("CAT Config:\n\t Min CBM Bits: %v\n\t CBM Mask Bits: %v\n", minBits, numBits)
+	log.WithFields(log.Fields{
+		"Min CBM Bits":  minBits,
+		"CBM Mask Bits": numBits,
+	}).Infoln("CAT configuration")
 
 	err = nil
 	return
