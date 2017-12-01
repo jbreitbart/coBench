@@ -208,5 +208,5 @@ func printStats(c string, stat stats.RuntimeT, catMask uint64) {
 		"runs":     fmt.Sprintf("%3d", stat.Runs),
 		"CAT":      fmt.Sprintf("%6x", catMask),
 		"slowdown": fmt.Sprintf("%1.6f", slowdown),
-	}).Infof("%v", c) // TODO pretty print cmd
+	}).Infof("%v", commands.Pretty(c))
 }

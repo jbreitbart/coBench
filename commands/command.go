@@ -65,3 +65,13 @@ func Read(filename string) ([]string, error) {
 
 	return commands, nil
 }
+
+func Pretty(app string) string {
+	slash := strings.LastIndex(app, "/")
+	space := strings.Index(app[slash+1:], " ")
+	if space == -1 {
+		space = len(app)
+	}
+
+	return app[slash+1 : space]
+}

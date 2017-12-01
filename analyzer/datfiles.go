@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/jbreitbart/coBench/commands"
 	"github.com/jbreitbart/coBench/stats"
 )
 
@@ -128,10 +129,10 @@ func createIndvCATDatFiles(apps []string) []string {
 
 func indvCATDatFilename(app string) string {
 	// TODO check if filename already in use
-	return prettyAppCmd(app) + "-cat.dat"
+	return commands.Pretty(app) + "-cat.dat"
 }
 
 func coSchedCATDatFilename(app0 string, app1 string) string {
 	// TODO check if filename already in use
-	return prettyAppCmd(app0) + "-" + prettyAppCmd(app1) + "-cosched-cat.dat"
+	return commands.Pretty(app0) + "-" + commands.Pretty(app1) + "-cosched-cat.dat"
 }
