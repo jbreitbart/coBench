@@ -2,10 +2,10 @@ package main
 
 import (
 	"io/ioutil"
-	"log"
 	"strings"
 
 	"github.com/jbreitbart/coBench/commands"
+	log "github.com/sirupsen/logrus"
 )
 
 func writeGNUPlotCATCoSchedFile(pairs [][2]string, filename []string) {
@@ -16,7 +16,7 @@ func writeGNUPlotCATCoSchedFile(pairs [][2]string, filename []string) {
 		log.Fatalln("Not all apps have CAT data? Not supported atm.")
 	}
 
-	log.Println("Creating plot file for co-scheduling CAT runs.")
+	log.Infoln("Creating plot file for co-scheduling CAT runs.")
 
 	var ret string
 	ret += "set terminal pdf\n"
@@ -43,7 +43,7 @@ func writeGNUPlotCATCoSchedFile(pairs [][2]string, filename []string) {
 
 	err := ioutil.WriteFile("co-sched-cat.plot", []byte(ret), 0644)
 	if err != nil {
-		log.Fatalf("Error while write file co-sched-cat.plot: %v", err)
+		log.WithError(err).Fatalln("Error while write file co-sched-cat.plot")
 	}
 }
 
@@ -55,7 +55,7 @@ func writeGNUPlotCATIndvFile(apps []string, filename []string) {
 		log.Fatalln("Not all apps have CAT data? Not supported atm.")
 	}
 
-	log.Println("Creating plot file for individual CAT runs.")
+	log.Infoln("Creating plot file for individual CAT runs.")
 
 	var ret string
 	ret += "set terminal pdf\n"
@@ -78,7 +78,7 @@ func writeGNUPlotCATIndvFile(apps []string, filename []string) {
 
 	err := ioutil.WriteFile("indv-cat.plot", []byte(ret), 0644)
 	if err != nil {
-		log.Fatalf("Error while write file indv-cat.plot: %v", err)
+		log.WithError(err).Fatalln("Error while write file indv-cat.plot")
 	}
 }
 

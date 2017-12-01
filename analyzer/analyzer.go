@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	"github.com/jbreitbart/coBench/commands"
 	"github.com/jbreitbart/coBench/stats"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -14,21 +14,22 @@ func main() {
 	flag.Parse()
 
 	if *inputFile == "" {
-		log.Fatal("No input file provided.\n")
+		log.Fatalln("No input file provided. Use -input <file>")
 	}
 
 	err := stats.ReadFromFile(*inputFile)
 	if err != nil {
-		log.Fatalf("Error reading input file: %v", err)
+		log.WithError(err).Fatalln("Cannot read input file")
 	}
 
 	apps := stats.GetAllApplications()
 
-	log.Println("Found data for the following applications:")
-	for _, app := range apps {
-		log.Printf("\t%v\n", app)
+	log.Infoln("Found data for the following applications:")
+	for i, app := range apps {
+		log.WithFields(log.Fields{
+			"app": app,
+		}).Infof("%v", i)
 	}
-	log.Println("")
 
 	indvApps := commands.GenerateIndv(apps)
 	CATDatFiles := createIndvCATDatFiles(indvApps)

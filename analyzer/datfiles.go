@@ -2,12 +2,13 @@ package main
 
 import (
 	"io/ioutil"
-	"log"
+
 	"sort"
 	"strconv"
 
 	"github.com/jbreitbart/coBench/commands"
 	"github.com/jbreitbart/coBench/stats"
+	log "github.com/sirupsen/logrus"
 )
 
 func sortedKeys(r *map[int]stats.RuntimeT) []int {
@@ -23,7 +24,7 @@ func sortedKeys(r *map[int]stats.RuntimeT) []int {
 }
 
 func createCoSchedCATDatFiles(pairs [][2]string) []string {
-	log.Println("Creating dat files for co-scheduling CAT runs.")
+	log.Infoln("Creating dat files for co-scheduling CAT runs.")
 
 	ret := make([]string, 0)
 
@@ -46,10 +47,6 @@ func createCoSchedCATDatFiles(pairs [][2]string) []string {
 
 		sortedKeys0 := sortedKeys(r0)
 		sortedKeys1 := sortedKeys(r1)
-
-		if len(sortedKeys0) != len(sortedKeys1) {
-			log.Fatalf("CAT co-scheduling data inconsistent: len: %v - %v\n", len(sortedKeys0), len(sortedKeys1))
-		}
 
 		for i := range sortedKeys0 {
 			k0 := sortedKeys0[i]
@@ -77,7 +74,9 @@ func createCoSchedCATDatFiles(pairs [][2]string) []string {
 		filename := coSchedCATDatFilename(pair[0], pair[1])
 		err := ioutil.WriteFile(filename, []byte(out), 0644)
 		if err != nil {
-			log.Fatalf("Error while write file %v: %v", filename, err)
+			log.WithError(err).WithFields(log.Fields{
+				"filename": filename,
+			}).Fatalln("Error while write file")
 		}
 
 		ret = append(ret, filename)
@@ -118,7 +117,9 @@ func createIndvCATDatFiles(apps []string) []string {
 		filename := indvCATDatFilename(app)
 		err := ioutil.WriteFile(filename, []byte(out), 0644)
 		if err != nil {
-			log.Fatalf("Error while write file %v: %v", filename, err)
+			log.WithError(err).WithFields(log.Fields{
+				"filename": filename,
+			}).Fatalln("Error while write file")
 		}
 
 		ret = append(ret, filename)
