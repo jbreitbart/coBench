@@ -57,7 +57,7 @@ func verifySetup(t *testing.T, apps []string) {
 			t.Errorf("Comparision failure with GetReferenceRuntime for app %v.", app)
 		}
 
-		catRs := GetIndvCATRuntimes(app)
+		catRs := GetCATRuntimes(app)
 
 		for _, CAT := range getCATMasks() {
 			r := make([]time.Duration, 10)
