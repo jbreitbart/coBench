@@ -1,14 +1,12 @@
 package stats
 
 import (
-	"log"
 	"math/bits"
 	"time"
 
 	"github.com/montanaflynn/stats"
+	log "github.com/sirupsen/logrus"
 )
-
-// TODO comment functions! :)
 
 // GetAllApplications returns a string slice containing all applications that are currently stored
 func GetAllApplications() []string {
@@ -45,7 +43,7 @@ func GetCoSchedRuntimes(application string, cosched string) *RuntimeT {
 	return &ret
 }
 
-// GetIndvCATRuntimes
+// GetIndvCATRuntimes returns all cat individual runtimes with CAT
 func GetIndvCATRuntimes(application string) *map[int]RuntimeT {
 	_, exists := runtimeStats.Runtimes[application]
 	if exists {
@@ -54,6 +52,7 @@ func GetIndvCATRuntimes(application string) *map[int]RuntimeT {
 	return nil
 }
 
+// GetReferenceRuntime returns the individual runtime without CAT
 func GetReferenceRuntime(application string) *RuntimeT {
 	_, exists := runtimeStats.Runtimes[application]
 	if exists {
@@ -68,6 +67,7 @@ func checkIfReferenceExists(application string) {
 	}
 }
 
+// AddReferenceRuntime adds the individual runtime without CAT
 func AddReferenceRuntime(application string, runtime []time.Duration) {
 	if runtimeStats.Runtimes == nil {
 		runtimeStats.Runtimes = make(map[string]*RuntimePerAppT, 1)
@@ -84,6 +84,7 @@ func AddReferenceRuntime(application string, runtime []time.Duration) {
 	runtimeStats.Runtimes[application] = &temp
 }
 
+// AddCATRuntime adds the individual runtime with CAT
 func AddCATRuntime(application string, CAT uint64, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
@@ -98,6 +99,7 @@ func AddCATRuntime(application string, CAT uint64, runtime []time.Duration) {
 	(*runtimeStats.Runtimes[application].CATRuntimes)[key] = ComputeRuntimeStats(runtime, CAT, old)
 }
 
+// AddCoSchedRuntime adds the co-scheduling runtime of 'application' co-scheduled with coSchedApplication without CAT
 func AddCoSchedRuntime(application string, coSchedApplication string, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
@@ -111,6 +113,7 @@ func AddCoSchedRuntime(application string, coSchedApplication string, runtime []
 	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = ComputeRuntimeStats(runtime, NoCATMask, old)
 }
 
+// AddCoSchedCATRuntime adds the co-scheduling runtime of 'application' co-scheduled with coSchedApplication with CAT
 func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uint64, runtime []time.Duration) {
 	checkIfReferenceExists(application)
 
@@ -150,11 +153,23 @@ func ComputeRuntimeStats(runtime []time.Duration, CATMask uint64, old RuntimeT) 
 		}
 	}
 
-	// TODO handle error?
-	old.Mean, _ = stats.Mean(runtimeSeconds)
-	old.Stddev, _ = stats.StandardDeviation(runtimeSeconds)
-	old.Vari, _ = stats.Variance(runtimeSeconds)
-	old.RuntimeSum, _ = stats.Sum(runtimeSeconds)
+	var err error
+	old.Mean, err = stats.Mean(runtimeSeconds)
+	if err != nil {
+		log.WithError(err).Errorln("Error while computing mean")
+	}
+	old.Stddev, err = stats.StandardDeviation(runtimeSeconds)
+	if err != nil {
+		log.WithError(err).Errorln("Error while computing stddev")
+	}
+	old.Vari, err = stats.Variance(runtimeSeconds)
+	if err != nil {
+		log.WithError(err).Errorln("Error while computing variance")
+	}
+	old.RuntimeSum, err = stats.Sum(runtimeSeconds)
+	if err != nil {
+		log.WithError(err).Errorln("Error while computing sum")
+	}
 
 	old.Runs = len(runtimeSeconds)
 

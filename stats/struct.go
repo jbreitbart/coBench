@@ -21,6 +21,7 @@ type CommandlineT struct {
 	Commands     []string
 }
 
+// RuntimeT contains a set of runtimes and statistic values
 type RuntimeT struct {
 	Mean              float64
 	Stddev            float64
@@ -30,6 +31,7 @@ type RuntimeT struct {
 	RawRuntimesByMask *map[uint64][]time.Duration
 }
 
+// RuntimePerAppT store runtime values with different combinations for one application
 type RuntimePerAppT struct {
 	// individual run
 	ReferenceRuntimes RuntimeT
@@ -44,6 +46,7 @@ type RuntimePerAppT struct {
 	CoSchedCATRuntimes *map[string]map[int]RuntimeT
 }
 
+// StatsT contains every information of a benchmark run
 type StatsT struct {
 	// Application command line as a key
 	Runtimes map[string]*RuntimePerAppT
