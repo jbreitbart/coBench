@@ -43,8 +43,8 @@ func GetCoSchedRuntimes(application string, cosched string) *RuntimeT {
 	return &ret
 }
 
-// GetIndvCATRuntimes returns all cat individual runtimes with CAT
-func GetIndvCATRuntimes(application string) *map[int]RuntimeT {
+// GetCATRuntimes returns all cat individual runtimes with CAT
+func GetCATRuntimes(application string) *map[int]RuntimeT {
 	_, exists := runtimeStats.Runtimes[application]
 	if exists {
 		return runtimeStats.Runtimes[application].CATRuntimes

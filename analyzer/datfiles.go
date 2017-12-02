@@ -92,7 +92,7 @@ func createIndvCATDatFiles(apps []string) []string {
 	ret := make([]string, 0)
 
 	for _, app := range apps {
-		catRuntime := stats.GetIndvCATRuntimes(app)
+		catRuntime := stats.GetCATRuntimes(app)
 		if catRuntime == nil {
 			continue
 		}
