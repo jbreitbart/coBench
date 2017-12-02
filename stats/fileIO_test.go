@@ -50,7 +50,7 @@ func verifySetup(t *testing.T, apps []string) {
 		for i := 0; i < 10; i++ {
 			r[i] = time.Duration(i)
 		}
-		runtime := ComputeRuntimeStats(r, NoCATMask, RuntimeT{})
+		runtime := newRuntimeT(NoCATMask, r)
 
 		ref := GetReferenceRuntime(app)
 		if !reflect.DeepEqual(*ref, runtime) {
@@ -64,7 +64,7 @@ func verifySetup(t *testing.T, apps []string) {
 			for i := 0; i < 10; i++ {
 				r[i] = time.Duration(CAT) * time.Duration(i)
 			}
-			runtime := ComputeRuntimeStats(r, CAT, RuntimeT{})
+			runtime := newRuntimeT(CAT, r)
 
 			c := (*catRs)[bits.OnesCount64(CAT)]
 			if !reflect.DeepEqual(c, runtime) {
@@ -77,7 +77,8 @@ func verifySetup(t *testing.T, apps []string) {
 	for i := 0; i < 10; i++ {
 		r[i] = time.Duration(i * i)
 	}
-	runtime := ComputeRuntimeStats(r, NoCATMask, RuntimeT{})
+	runtime := newRuntimeT(NoCATMask, r)
+
 	co := GetCoSchedRuntimes(apps[0], apps[1])
 	if !reflect.DeepEqual(*co, runtime) {
 		t.Errorf("Comparision failure with GetCoSchedRuntimes for apps %v.", apps)

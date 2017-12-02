@@ -4,7 +4,6 @@ import (
 	"math/bits"
 	"time"
 
-	"github.com/montanaflynn/stats"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -68,7 +67,7 @@ func checkIfReferenceExists(application string) {
 }
 
 // AddReferenceRuntime adds the individual runtime without CAT
-func AddReferenceRuntime(application string, runtime []time.Duration) {
+func AddReferenceRuntime(application string, runtime []time.Duration) RuntimeT {
 	if runtimeStats.Runtimes == nil {
 		runtimeStats.Runtimes = make(map[string]*RuntimePerAppT, 1)
 	}
@@ -78,14 +77,17 @@ func AddReferenceRuntime(application string, runtime []time.Duration) {
 	if runtimeStats.Runtimes[application] != nil {
 		old = runtimeStats.Runtimes[application].ReferenceRuntimes
 	}
+	old.update(NoCATMask, runtime)
 
 	var temp RuntimePerAppT
-	temp.ReferenceRuntimes = ComputeRuntimeStats(runtime, NoCATMask, old)
+	temp.ReferenceRuntimes = old
 	runtimeStats.Runtimes[application] = &temp
+
+	return old
 }
 
 // AddCATRuntime adds the individual runtime with CAT
-func AddCATRuntime(application string, CAT uint64, runtime []time.Duration) {
+func AddCATRuntime(application string, CATMask uint64, runtime []time.Duration) RuntimeT {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CATRuntimes == nil {
@@ -93,14 +95,17 @@ func AddCATRuntime(application string, CAT uint64, runtime []time.Duration) {
 		runtimeStats.Runtimes[application].CATRuntimes = &temp
 	}
 
-	key := bits.OnesCount64(CAT)
+	key := bits.OnesCount64(CATMask)
 	old := (*runtimeStats.Runtimes[application].CATRuntimes)[key]
+	old.update(CATMask, runtime)
 
-	(*runtimeStats.Runtimes[application].CATRuntimes)[key] = ComputeRuntimeStats(runtime, CAT, old)
+	(*runtimeStats.Runtimes[application].CATRuntimes)[key] = old
+
+	return old
 }
 
 // AddCoSchedRuntime adds the co-scheduling runtime of 'application' co-scheduled with coSchedApplication without CAT
-func AddCoSchedRuntime(application string, coSchedApplication string, runtime []time.Duration) {
+func AddCoSchedRuntime(application string, coSchedApplication string, runtime []time.Duration) RuntimeT {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CoSchedRuntimes == nil {
@@ -109,12 +114,15 @@ func AddCoSchedRuntime(application string, coSchedApplication string, runtime []
 	}
 
 	old := (*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication]
+	old.update(NoCATMask, runtime)
 
-	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = ComputeRuntimeStats(runtime, NoCATMask, old)
+	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = old
+
+	return old
 }
 
 // AddCoSchedCATRuntime adds the co-scheduling runtime of 'application' co-scheduled with coSchedApplication with CAT
-func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uint64, runtime []time.Duration) {
+func AddCoSchedCATRuntime(application string, coSchedApplication string, CATMask uint64, runtime []time.Duration) RuntimeT {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CoSchedCATRuntimes == nil {
@@ -126,52 +134,11 @@ func AddCoSchedCATRuntime(application string, coSchedApplication string, CAT uin
 		(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication] = temp
 	}
 
-	key := bits.OnesCount64(CAT)
+	key := bits.OnesCount64(CATMask)
 	old := (*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key]
+	old.update(CATMask, runtime)
 
-	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key] = ComputeRuntimeStats(runtime, CAT, old)
-}
-
-// ComputeRuntimeStats creates a RuntimeT object based on the runtime
-func ComputeRuntimeStats(runtime []time.Duration, CATMask uint64, old RuntimeT) RuntimeT {
-	// old will be updated and returned
-
-	if old.RawRuntimesByMask == nil {
-		temp := make(map[uint64][]time.Duration, 1)
-		old.RawRuntimesByMask = &temp
-	}
-	if _, exists := (*old.RawRuntimesByMask)[CATMask]; exists {
-		(*old.RawRuntimesByMask)[CATMask] = append((*old.RawRuntimesByMask)[CATMask], runtime...)
-	} else {
-		(*old.RawRuntimesByMask)[CATMask] = runtime
-	}
-
-	var runtimeSeconds []float64
-	for _, v := range *old.RawRuntimesByMask {
-		for _, r := range v {
-			runtimeSeconds = append(runtimeSeconds, r.Seconds())
-		}
-	}
-
-	var err error
-	old.Mean, err = stats.Mean(runtimeSeconds)
-	if err != nil {
-		log.WithError(err).Errorln("Error while computing mean")
-	}
-	old.Stddev, err = stats.StandardDeviation(runtimeSeconds)
-	if err != nil {
-		log.WithError(err).Errorln("Error while computing stddev")
-	}
-	old.Vari, err = stats.Variance(runtimeSeconds)
-	if err != nil {
-		log.WithError(err).Errorln("Error while computing variance")
-	}
-	old.RuntimeSum, err = stats.Sum(runtimeSeconds)
-	if err != nil {
-		log.WithError(err).Errorln("Error while computing sum")
-	}
-
-	old.Runs = len(runtimeSeconds)
+	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key] = old
 
 	return old
 }
