@@ -4,6 +4,8 @@ import (
 	"flag"
 
 	"github.com/jbreitbart/coBench/stats"
+	"github.com/multiplay/go-slack/chat"
+	"github.com/multiplay/go-slack/lrhook"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -20,6 +22,9 @@ var catBitChunk *uint64
 var catDirs []string
 
 var varianceDiff *float64
+
+var slackChannel *string
+var slackWebhook *string
 
 func parseArgs() *string {
 	runs = flag.Int("runs", 2, "Number of times the applications are executed")
@@ -39,8 +44,23 @@ func parseArgs() *string {
 
 	noCoSched = flag.Bool("no-cosched", false, "Disable co-scheduling")
 
+	slackChannel = flag.String("slack-channel", "#cobench", "The channel coBench will use for logging")
+	slackWebhook = flag.String("slack-webhook", "", "The webhook of your slack application")
+
 	flag.Parse()
 	catDirs = []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
+
+	if *slackWebhook != "" {
+		cfg := lrhook.Config{
+			MinLevel: log.InfoLevel,
+			Message: chat.Message{
+				Channel:   *slackChannel,
+				IconEmoji: ":ghost:",
+			},
+		}
+		h := lrhook.New(cfg, *slackWebhook)
+		log.AddHook(h)
+	}
 
 	if *runs < 1 {
 		log.Fatalln("runs must be > 0")
