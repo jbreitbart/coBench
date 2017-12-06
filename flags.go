@@ -25,6 +25,7 @@ var varianceDiff *float64
 
 var slackChannel *string
 var slackWebhook *string
+var slackLevel *int
 
 func parseArgs() *string {
 	runs = flag.Int("runs", 2, "Number of times the applications are executed")
@@ -46,6 +47,7 @@ func parseArgs() *string {
 
 	slackChannel = flag.String("slack-channel", "#cobench", "The channel coBench will use for logging")
 	slackWebhook = flag.String("slack-webhook", "", "The webhook of your slack application")
+	slackLevel = flag.Int("slack-level", 1, "Select the lowest log level forwarded to slack. 0: Debug; 1: Info; 2: Warn")
 
 	flag.Parse()
 	catDirs = []string{*resctrlPath + "/cobench0", *resctrlPath + "/cobench1"}
@@ -57,6 +59,12 @@ func parseArgs() *string {
 				Channel:   *slackChannel,
 				IconEmoji: ":ghost:",
 			},
+		}
+		if *slackLevel == 0 {
+			cfg.MinLevel = log.DebugLevel
+		}
+		if *slackLevel == 2 {
+			cfg.MinLevel = log.WarnLevel
 		}
 		h := lrhook.New(cfg, *slackWebhook)
 		log.AddHook(h)
