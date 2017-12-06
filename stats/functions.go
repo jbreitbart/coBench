@@ -1,11 +1,26 @@
 package stats
 
 import (
+	"encoding/json"
 	"math/bits"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
+
+// CreateJSON creates a JSON representation of the current state
+func CreateJSON() ([]byte, error) {
+	json, err := json.Marshal(runtimeStats)
+	if err != nil {
+		return nil, err
+	}
+	return json, err
+}
+
+// StoreJSON parses the JSON and stores it in the state
+func StoreJSON(raw []byte) error {
+	return json.Unmarshal(raw, &runtimeStats)
+}
 
 // GetAllApplications returns a string slice containing all applications that are currently stored
 func GetAllApplications() []string {

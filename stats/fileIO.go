@@ -1,13 +1,12 @@
 package stats
 
 import (
-	"encoding/json"
 	"io/ioutil"
 )
 
 // StoreToFile stores the current stats as json in a file
 func StoreToFile(filename string) error {
-	json, err := json.Marshal(runtimeStats)
+	json, err := CreateJSON()
 	if err != nil {
 		return err
 	}
@@ -23,6 +22,6 @@ func ReadFromFile(filename string) error {
 		return err
 	}
 
-	err = json.Unmarshal(raw, &runtimeStats)
+	err = StoreJSON(raw)
 	return err
 }
