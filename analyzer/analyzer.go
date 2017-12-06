@@ -36,6 +36,9 @@ func main() {
 	writeGNUPlotCATIndvFile(indvApps, CATDatFiles)
 
 	pairs := commands.GeneratePairs(apps)
-	CATCoSchedDatFiles := createCoSchedCATDatFiles(pairs)
-	writeGNUPlotCATCoSchedFile(pairs, CATCoSchedDatFiles)
+	CATCoSchedDatFiles := createCoSchedCATDatFiles(pairs, false)
+	writeGNUPlotCATCoSchedFile(pairs, CATCoSchedDatFiles, false)
+
+	CATCoSchedDatFiles = createCoSchedCATDatFiles(pairs, true)
+	writeGNUPlotCATCoSchedFile(pairs, CATCoSchedDatFiles, true)
 }
