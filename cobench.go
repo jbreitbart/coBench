@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/jbreitbart/coBench/commands"
@@ -19,9 +21,12 @@ func main() {
 			"file": *commandFile,
 		}).Fatalln("Could not read command file")
 	}
-	if len(commandStrings) < 2 {
-		log.Fatalln("You must provide at least 2 commands")
+	if len(commandStrings) < 1 || (len(commandStrings) < 2 && !*noCoSched) {
+		log.Fatalln("You must provide more commands")
 	}
+
+	hostname, _ := os.Hostname()
+	log.WithField("host", hostname).Infoln("Benchmark started")
 
 	storeConfig(commandStrings)
 
@@ -45,15 +50,30 @@ func main() {
 }
 
 func cleanup() {
+	log.Infoln("Benchmark runs complete")
+
 	filename := time.Now().Format("06-01-02-15-04-05.result.json")
+
 	err := stats.StoreToFile(filename)
 	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
 			"file": filename,
 		}).Errorln("Error store measurements")
 
-		// TODO dump json to stdout?
+		j, _ := stats.CreateJSON()
+		log.Infoln(string(j))
 	}
+
+	absfilename, err := filepath.Abs(filename)
+	if err == nil {
+		filename = absfilename
+	}
+	hostname, err := os.Hostname()
+	if err == nil {
+		filename = hostname + ":" + filename
+	}
+
+	log.WithField("file", filename).Infoln("Result file written")
 }
 
 func individualRuns(commands []string) {
