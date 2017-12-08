@@ -52,28 +52,26 @@ func main() {
 func cleanup() {
 	log.Infoln("Benchmark runs complete")
 
-	filename := time.Now().Format("06-01-02-15-04-05.result.json")
-
-	err := stats.StoreToFile(filename)
+	err := stats.StoreToFile(*resultFilename)
 	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
-			"file": filename,
+			"file": *resultFilename,
 		}).Errorln("Error store measurements")
 
 		j, _ := stats.CreateJSON()
 		log.Infoln(string(j))
 	}
 
-	absfilename, err := filepath.Abs(filename)
+	absfilename, err := filepath.Abs(*resultFilename)
 	if err == nil {
-		filename = absfilename
+		*resultFilename = absfilename
 	}
 	hostname, err := os.Hostname()
 	if err == nil {
-		filename = hostname + ":" + filename
+		*resultFilename = hostname + ":" + *resultFilename
 	}
 
-	log.WithField("file", filename).Infoln("Result file written")
+	log.WithField("file", *resultFilename).Infoln("Result file written")
 }
 
 func individualRuns(commands []string) {

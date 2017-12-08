@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	"github.com/jbreitbart/coBench/stats"
 	"github.com/multiplay/go-slack/chat"
@@ -22,6 +23,8 @@ var catBitChunk *uint64
 var catDirs []string
 
 var varianceDiff *float64
+
+var resultFilename *string
 
 var slackChannel *string
 var slackWebhook *string
@@ -44,6 +47,8 @@ func parseArgs() *string {
 	varianceDiff = flag.Float64("variance", 100, "Minimum differences in variance required between runs")
 
 	noCoSched = flag.Bool("no-cosched", false, "Disable co-scheduling")
+
+	resultFilename = flag.String("output", time.Now().Format("06-01-02-15-04-05.result.json"), "Name of the result json file")
 
 	slackChannel = flag.String("slack-channel", "#cobench", "The channel coBench will use for logging")
 	slackWebhook = flag.String("slack-webhook", "", "The webhook of your slack application")
