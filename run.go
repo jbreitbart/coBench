@@ -5,9 +5,11 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/jbreitbart/coBench/commands"
 	"github.com/montanaflynn/stats"
 )
 
@@ -23,6 +25,17 @@ func setupCmd(c string, cpuID int, logFilename string) (*exec.Cmd, *os.File, err
 		cmd.Env = append(env, "GOMP_CPU_AFFINITY="+cpus[cpuID], "OMP_NUM_THREADS="+*threads)
 	}
 
+	// try to avoid duplicate filenames; TODO not perfect
+	if _, err := os.Stat(logFilename + ".log"); err == nil {
+		for i := 0; i < 100; i++ {
+			if _, err := os.Stat(logFilename + "--" + strconv.Itoa(i) + ".log"); err != nil {
+				logFilename = logFilename + "-" + strconv.Itoa(i)
+				break
+			}
+		}
+	}
+	logFilename += ".log"
+
 	outfile, err := os.Create(logFilename)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error while creating file: %v", err)
@@ -33,7 +46,7 @@ func setupCmd(c string, cpuID int, logFilename string) (*exec.Cmd, *os.File, err
 	return cmd, outfile, nil
 }
 
-func runSingle(c string, id int, catConfig [2]uint64) ([]time.Duration, error) {
+func runSingle(c string, catConfig [2]uint64) ([]time.Duration, error) {
 
 	if catConfig[0] != 0 && catConfig[1] != 0 {
 		if err := writeCATConfig(catConfig); err != nil {
@@ -41,11 +54,10 @@ func runSingle(c string, id int, catConfig [2]uint64) ([]time.Duration, error) {
 		}
 	}
 
-	filename := fmt.Sprintf("%v", id)
+	filename := commands.Pretty(c)
 	if catConfig[0] != 0 && catConfig[1] != 0 {
 		filename += fmt.Sprintf("-%x", catConfig[0])
 	}
-	filename += ".log"
 	cmd, outFile, err := setupCmd(c, 0, filename)
 	if err != nil {
 		return nil, err
@@ -77,8 +89,7 @@ func runSingle(c string, id int, catConfig [2]uint64) ([]time.Duration, error) {
 	return runtimes, nil
 }
 
-// TODO remove id
-func runPair(cPair [2]string, id int, catConfig [2]uint64) ([][]time.Duration, error) {
+func runPair(cPair [2]string, catConfig [2]uint64) ([][]time.Duration, error) {
 
 	if catConfig[0] != 0 && catConfig[1] != 0 {
 		if err := writeCATConfig(catConfig); err != nil {
@@ -89,11 +100,10 @@ func runPair(cPair [2]string, id int, catConfig [2]uint64) ([][]time.Duration, e
 	var cmds [len(cpus)]*exec.Cmd
 	// setup commands
 	for i := range cmds {
-		filename := fmt.Sprintf("%v-%v", id, i)
+		filename := fmt.Sprintf("%v-%v", commands.Pretty(cPair[i]), commands.Pretty(cPair[(i+1)%2]))
 		if catConfig[0] != 0 && catConfig[1] != 0 {
 			filename += fmt.Sprintf("-%x", catConfig[0])
 		}
-		filename += ".log"
 
 		var outFile *os.File
 		var err error

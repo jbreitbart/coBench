@@ -81,13 +81,13 @@ func individualRuns(commands []string) {
 	log.Infoln("Running apps individually")
 
 	// run app individually without CAT (if CAT was requested)
-	for i, c := range commands {
+	for _, c := range commands {
 		catConfig := [2]uint64{stats.NoCATMask, stats.NoCATMask}
 
 		log.WithFields(log.Fields{
 			"app": c,
 		}).Infoln("Running app")
-		r, err := runSingle(c, i, catConfig)
+		r, err := runSingle(c, catConfig)
 		if err != nil {
 			log.WithError(err).Fatalln("Error running app")
 		}
@@ -108,14 +108,14 @@ func individualRuns(commands []string) {
 
 	catPairs := generateCatConfigs(minBits, numBits)
 
-	for i, c := range commands {
+	for _, c := range commands {
 
 		log.WithFields(log.Fields{
 			"app": c,
 		}).Infoln("Running app with CAT")
 
 		for _, catConfig := range catPairs {
-			runtime, err := runSingle(c, i, catConfig)
+			runtime, err := runSingle(c, catConfig)
 			if err != nil {
 				log.WithError(err).Fatalln("Error running app")
 			}
@@ -145,7 +145,7 @@ func coSchedRuns(commandPairs [][2]string) {
 		}).Infof("Running pair %v", i)
 
 		catConfig := [2]uint64{stats.NoCATMask, stats.NoCATMask}
-		runtimes, err := runPair(c, i, catConfig)
+		runtimes, err := runPair(c, catConfig)
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
 				"app0": c[0],
@@ -178,7 +178,7 @@ func coSchedRuns(commandPairs [][2]string) {
 		}).Infof("Running pair %v", i)
 
 		for _, catConfig := range catPairs {
-			runtimes, err := runPair(c, i, catConfig)
+			runtimes, err := runPair(c, catConfig)
 			if err != nil {
 				log.WithError(err).WithFields(log.Fields{
 					"app0": c[0],
