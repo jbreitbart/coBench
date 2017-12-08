@@ -34,6 +34,10 @@ func GetCoSchedCATRuntimes(application string, cosched string) *map[int]RuntimeT
 		return nil
 	}
 
+	if (*temp).CoSchedCATRuntimes == nil {
+		return nil
+	}
+
 	ret, exists := (*(*temp).CoSchedCATRuntimes)[cosched]
 	if exists {
 		return &ret
@@ -46,6 +50,10 @@ func GetCoSchedCATRuntimes(application string, cosched string) *map[int]RuntimeT
 func GetCoSchedRuntimes(application string, cosched string) *RuntimeT {
 	temp, exists := runtimeStats.Runtimes[application]
 	if !exists {
+		return nil
+	}
+
+	if (*temp).CoSchedRuntimes == nil {
 		return nil
 	}
 

@@ -9,7 +9,7 @@ import (
 )
 
 func writeGNUPlotCATCoSchedFile(pairs [][2]string, filenames []string, paired bool) {
-	if len(pairs) == 0 {
+	if len(pairs) == 0 || len(filenames) == 0 {
 		return
 	}
 	if len(pairs) != len(filenames) {
