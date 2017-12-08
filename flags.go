@@ -41,7 +41,7 @@ func parseArgs() *string {
 
 	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
 
-	varianceDiff = flag.Float64("variance", 0.001, "Minimum differences in variance required between runs")
+	varianceDiff = flag.Float64("variance", 100, "Minimum differences in variance required between runs")
 
 	noCoSched = flag.Bool("no-cosched", false, "Disable co-scheduling")
 
