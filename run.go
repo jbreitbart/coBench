@@ -17,16 +17,26 @@ import (
 )
 
 func setupCmd(c string, cpuID int, logFilename string) (*exec.Cmd, *os.File, error) {
+	var commandName string
+	commandStr := make([]string, 0)
+
 	env := os.Environ()
-	var cmd *exec.Cmd
 
 	if *hermitcore {
-		cmd = exec.Command("numactl", "--physcpubind", cpus[cpuID], "/bin/sh", "-c", c)
-		cmd.Env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
+		commandName = "numactl"
+		commandStr = append(commandStr, "numactl", "--physcpubind", cpus[cpuID], "/bin/sh")
+		env = append(env, "HERMIT_CPUS="+*threads, "HERMIT_MEM=4G", "HERMIT_ISLE=uhyve")
 	} else {
-		cmd = exec.Command("/bin/sh", "-c", c)
-		cmd.Env = append(env, "GOMP_CPU_AFFINITY="+cpus[cpuID], "OMP_NUM_THREADS="+*threads)
+		commandName = "/bin/sh"
+		env = append(env, "GOMP_CPU_AFFINITY="+cpus[cpuID], "OMP_NUM_THREADS="+*threads)
 	}
+	commandStr = append(commandStr, "-c")
+	if *perfStat != "" {
+		commandStr = append(commandStr, "perf", "stat", "-e", *perfStat)
+	}
+	commandStr = append(commandStr, c)
+	cmd := exec.Command(commandName, commandStr...)
+	cmd.Env = env
 
 	// try to avoid duplicate filenames; TODO not perfect
 	if _, err := os.Stat(logFilename + ".log"); err == nil {

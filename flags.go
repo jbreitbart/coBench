@@ -24,6 +24,8 @@ var catDirs []string
 
 var varianceDiff *float64
 
+var perfStat *string
+
 var resultFilename *string
 
 var slackChannel *string
@@ -47,6 +49,8 @@ func parseArgs() *string {
 	varianceDiff = flag.Float64("variance", 100, "Minimum differences in variance required between runs")
 
 	noCoSched = flag.Bool("no-cosched", false, "Disable co-scheduling")
+
+	perfStat = flag.String("pstat", "", "If set commands are with perf stat -e <param>. Param could be intel_cqm/llc_occupancy/,LLC-load-misses")
 
 	resultFilename = flag.String("output", time.Now().Format("06-01-02-15-04-05.result.json"), "Name of the result json file")
 
