@@ -32,7 +32,7 @@ func setupCmd(c string, cpuID int, logFilename string) (*exec.Cmd, *os.File, err
 	}
 	commandStr = append(commandStr, "-c")
 	if *perfStat != "" {
-		commandStr = append(commandStr, "perf", "stat", "-e", *perfStat)
+		c = "perf stat -e " + *perfStat + " " + c
 	}
 	commandStr = append(commandStr, c)
 	cmd := exec.Command(commandName, commandStr...)
