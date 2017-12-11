@@ -5,7 +5,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/jbreitbart/coBench/commands"
 	"github.com/jbreitbart/coBench/stats"
@@ -192,7 +191,7 @@ func coSchedRuns(commandPairs [][2]string) {
 	}
 }
 
-func processRuntime(id int, cPair [2]string, catMasks [2]uint64, runtimes [][]time.Duration) error {
+func processRuntime(id int, cPair [2]string, catMasks [2]uint64, runtimes [][]stats.DataPerRun) error {
 
 	for i, runtime := range runtimes {
 		var stat stats.RuntimeT

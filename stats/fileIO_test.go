@@ -20,24 +20,24 @@ func TestWriteReadIO(t *testing.T) {
 
 func testSetup(t *testing.T, apps []string) {
 	for _, app := range apps {
-		r := make([]time.Duration, 10)
+		r := make([]DataPerRun, 10)
 		for i := 0; i < 10; i++ {
-			r[i] = time.Duration(i)
+			r[i].Runtime = time.Duration(i)
 		}
 		AddReferenceRuntime(app, r)
 
 		for _, CAT := range getCATMasks() {
-			r := make([]time.Duration, 10)
+			r := make([]DataPerRun, 10)
 			for i := 0; i < 10; i++ {
-				r[i] = time.Duration(CAT) * time.Duration(i)
+				r[i].Runtime = time.Duration(CAT) * time.Duration(i)
 			}
 			AddCATRuntime(app, CAT, r)
 		}
 	}
 
-	r := make([]time.Duration, 10)
+	r := make([]DataPerRun, 10)
 	for i := 0; i < 10; i++ {
-		r[i] = time.Duration(i * i)
+		r[i].Runtime = time.Duration(i * i)
 	}
 	AddCoSchedRuntime(apps[0], apps[1], r)
 
@@ -46,9 +46,9 @@ func testSetup(t *testing.T, apps []string) {
 
 func verifySetup(t *testing.T, apps []string) {
 	for _, app := range apps {
-		r := make([]time.Duration, 10)
+		r := make([]DataPerRun, 10)
 		for i := 0; i < 10; i++ {
-			r[i] = time.Duration(i)
+			r[i].Runtime = time.Duration(i)
 		}
 		runtime := newRuntimeT(NoCATMask, r)
 
@@ -60,9 +60,9 @@ func verifySetup(t *testing.T, apps []string) {
 		catRs := GetCATRuntimes(app)
 
 		for _, CAT := range getCATMasks() {
-			r := make([]time.Duration, 10)
+			r := make([]DataPerRun, 10)
 			for i := 0; i < 10; i++ {
-				r[i] = time.Duration(CAT) * time.Duration(i)
+				r[i].Runtime = time.Duration(CAT) * time.Duration(i)
 			}
 			runtime := newRuntimeT(CAT, r)
 
@@ -73,9 +73,9 @@ func verifySetup(t *testing.T, apps []string) {
 		}
 	}
 
-	r := make([]time.Duration, 10)
+	r := make([]DataPerRun, 10)
 	for i := 0; i < 10; i++ {
-		r[i] = time.Duration(i * i)
+		r[i].Runtime = time.Duration(i * i)
 	}
 	runtime := newRuntimeT(NoCATMask, r)
 

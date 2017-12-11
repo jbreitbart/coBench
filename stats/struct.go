@@ -24,6 +24,12 @@ type CommandlineT struct {
 	Commands     []string
 }
 
+// DataPerRun is the data we store for every run
+type DataPerRun struct {
+	Runtime time.Duration
+	Output  string
+}
+
 // RuntimeT contains a set of runtimes and statistic values
 type RuntimeT struct {
 	Mean              float64
@@ -31,31 +37,31 @@ type RuntimeT struct {
 	Vari              float64
 	RuntimeSum        float64
 	Runs              int
-	RawRuntimesByMask *map[uint64][]time.Duration
+	RawRuntimesByMask *map[uint64][]DataPerRun
 }
 
-func newRuntimeT(CATMask uint64, rawRuntimes []time.Duration) RuntimeT {
+func newRuntimeT(CATMask uint64, rawRuntimes []DataPerRun) RuntimeT {
 	var ret RuntimeT
 	ret.update(CATMask, rawRuntimes)
 	return ret
 }
 
-func (run *RuntimeT) update(CATMask uint64, rawRuntimes []time.Duration) {
+func (run *RuntimeT) update(CATMask uint64, data []DataPerRun) {
 	if run.RawRuntimesByMask == nil {
-		temp := make(map[uint64][]time.Duration, 1)
+		temp := make(map[uint64][]DataPerRun, 1)
 		run.RawRuntimesByMask = &temp
 	}
 
 	if _, exists := (*run.RawRuntimesByMask)[CATMask]; exists {
-		(*run.RawRuntimesByMask)[CATMask] = append((*run.RawRuntimesByMask)[CATMask], rawRuntimes...)
+		(*run.RawRuntimesByMask)[CATMask] = append((*run.RawRuntimesByMask)[CATMask], data...)
 	} else {
-		(*run.RawRuntimesByMask)[CATMask] = rawRuntimes
+		(*run.RawRuntimesByMask)[CATMask] = data
 	}
 
 	var runtimeSeconds []float64
 	for _, v := range *run.RawRuntimesByMask {
 		for _, r := range v {
-			runtimeSeconds = append(runtimeSeconds, r.Seconds())
+			runtimeSeconds = append(runtimeSeconds, r.Runtime.Seconds())
 		}
 	}
 

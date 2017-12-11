@@ -3,7 +3,6 @@ package stats
 import (
 	"encoding/json"
 	"math/bits"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -90,7 +89,7 @@ func checkIfReferenceExists(application string) {
 }
 
 // AddReferenceRuntime adds the individual runtime without CAT
-func AddReferenceRuntime(application string, runtime []time.Duration) RuntimeT {
+func AddReferenceRuntime(application string, data []DataPerRun) RuntimeT {
 	if runtimeStats.Runtimes == nil {
 		runtimeStats.Runtimes = make(map[string]*RuntimePerAppT, 1)
 	}
@@ -100,7 +99,7 @@ func AddReferenceRuntime(application string, runtime []time.Duration) RuntimeT {
 	if runtimeStats.Runtimes[application] != nil {
 		old = runtimeStats.Runtimes[application].ReferenceRuntimes
 	}
-	old.update(NoCATMask, runtime)
+	old.update(NoCATMask, data)
 
 	var temp RuntimePerAppT
 	temp.ReferenceRuntimes = old
@@ -110,7 +109,7 @@ func AddReferenceRuntime(application string, runtime []time.Duration) RuntimeT {
 }
 
 // AddCATRuntime adds the individual runtime with CAT
-func AddCATRuntime(application string, CATMask uint64, runtime []time.Duration) RuntimeT {
+func AddCATRuntime(application string, CATMask uint64, data []DataPerRun) RuntimeT {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CATRuntimes == nil {
@@ -120,7 +119,7 @@ func AddCATRuntime(application string, CATMask uint64, runtime []time.Duration) 
 
 	key := bits.OnesCount64(CATMask)
 	old := (*runtimeStats.Runtimes[application].CATRuntimes)[key]
-	old.update(CATMask, runtime)
+	old.update(CATMask, data)
 
 	(*runtimeStats.Runtimes[application].CATRuntimes)[key] = old
 
@@ -128,7 +127,7 @@ func AddCATRuntime(application string, CATMask uint64, runtime []time.Duration) 
 }
 
 // AddCoSchedRuntime adds the co-scheduling runtime of 'application' co-scheduled with coSchedApplication without CAT
-func AddCoSchedRuntime(application string, coSchedApplication string, runtime []time.Duration) RuntimeT {
+func AddCoSchedRuntime(application string, coSchedApplication string, data []DataPerRun) RuntimeT {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CoSchedRuntimes == nil {
@@ -137,7 +136,7 @@ func AddCoSchedRuntime(application string, coSchedApplication string, runtime []
 	}
 
 	old := (*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication]
-	old.update(NoCATMask, runtime)
+	old.update(NoCATMask, data)
 
 	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = old
 
@@ -145,7 +144,7 @@ func AddCoSchedRuntime(application string, coSchedApplication string, runtime []
 }
 
 // AddCoSchedCATRuntime adds the co-scheduling runtime of 'application' co-scheduled with coSchedApplication with CAT
-func AddCoSchedCATRuntime(application string, coSchedApplication string, CATMask uint64, runtime []time.Duration) RuntimeT {
+func AddCoSchedCATRuntime(application string, coSchedApplication string, CATMask uint64, data []DataPerRun) RuntimeT {
 	checkIfReferenceExists(application)
 
 	if runtimeStats.Runtimes[application].CoSchedCATRuntimes == nil {
@@ -159,7 +158,7 @@ func AddCoSchedCATRuntime(application string, coSchedApplication string, CATMask
 
 	key := bits.OnesCount64(CATMask)
 	old := (*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key]
-	old.update(CATMask, runtime)
+	old.update(CATMask, data)
 
 	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key] = old
 

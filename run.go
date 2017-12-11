@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -10,7 +12,8 @@ import (
 	"time"
 
 	"github.com/jbreitbart/coBench/commands"
-	"github.com/montanaflynn/stats"
+	"github.com/jbreitbart/coBench/stats"
+	mstats "github.com/montanaflynn/stats"
 )
 
 func setupCmd(c string, cpuID int, logFilename string) (*exec.Cmd, *os.File, error) {
@@ -46,7 +49,7 @@ func setupCmd(c string, cpuID int, logFilename string) (*exec.Cmd, *os.File, err
 	return cmd, outfile, nil
 }
 
-func runSingle(c string, catConfig [2]uint64) ([]time.Duration, error) {
+func runSingle(c string, catConfig [2]uint64) ([]stats.DataPerRun, error) {
 
 	if catConfig[0] != 0 && catConfig[1] != 0 {
 		if err := writeCATConfig(catConfig); err != nil {
@@ -72,7 +75,7 @@ func runSingle(c string, catConfig [2]uint64) ([]time.Duration, error) {
 	errs := make(chan error, 1)
 
 	// used to return the app runtimes
-	var runtimes []time.Duration
+	var runtimes []stats.DataPerRun
 
 	// used to wait for the following 2 goroutines
 	var wg sync.WaitGroup
@@ -89,7 +92,7 @@ func runSingle(c string, catConfig [2]uint64) ([]time.Duration, error) {
 	return runtimes, nil
 }
 
-func runPair(cPair [2]string, catConfig [2]uint64) ([][]time.Duration, error) {
+func runPair(cPair [2]string, catConfig [2]uint64) ([][]stats.DataPerRun, error) {
 
 	if catConfig[0] != 0 && catConfig[1] != 0 {
 		if err := writeCATConfig(catConfig); err != nil {
@@ -122,7 +125,7 @@ func runPair(cPair [2]string, catConfig [2]uint64) ([][]time.Duration, error) {
 	errs := make(chan error, len(cmds))
 
 	// used to return the app runtimes
-	runtimes := make([][]time.Duration, len(cmds))
+	runtimes := make([][]stats.DataPerRun, len(cmds))
 
 	// used to wait for the following 2 goroutines
 	var wg sync.WaitGroup
@@ -141,7 +144,7 @@ func runPair(cPair [2]string, catConfig [2]uint64) ([][]time.Duration, error) {
 	return runtimes, nil
 }
 
-func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, runtime *[]time.Duration, done chan int, errs chan error) {
+func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, runtime *[]stats.DataPerRun, done chan int, errs chan error) {
 	defer wg.Done()
 
 	oldVariance := 0.0
@@ -152,9 +155,16 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, runtime *[]time.
 		// create a copy of the command
 		cmd := *cmd
 
+		var buf bytes.Buffer
+		cmd.Stdout = io.MultiWriter(cmd.Stdout, &buf)
+		cmd.Stderr = io.MultiWriter(cmd.Stderr, &buf)
+
 		start := time.Now()
 		err := cmd.Run()
-		elapsed := time.Since(start)
+
+		var data stats.DataPerRun
+		data.Runtime = time.Since(start)
+		data.Output = buf.String()
 
 		if err != nil {
 			errs <- fmt.Errorf("Error running %v: %v", cmd.Args, err)
@@ -171,13 +181,13 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, runtime *[]time.
 		// check if the other application was running the whole time
 		if d != len(cpus) {
 			// yes
-			*runtime = append(*runtime, elapsed)
-			runtimeInSeconds = append(runtimeInSeconds, elapsed.Seconds())
+			*runtime = append(*runtime, data)
+			runtimeInSeconds = append(runtimeInSeconds, data.Runtime.Seconds())
 		}
 
 		// did we run min times?
 		if !completed && i >= min {
-			vari, _ := stats.Variance(runtimeInSeconds)
+			vari, _ := mstats.Variance(runtimeInSeconds)
 			if math.Abs(vari-oldVariance) <= *varianceDiff {
 				d++
 				completed = true
