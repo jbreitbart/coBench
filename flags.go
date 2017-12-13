@@ -19,6 +19,7 @@ var noCoSched *bool
 
 var resctrlPath *string
 var cat *bool
+var inverseCat *bool
 var catBitChunk *uint64
 var catDirs []string
 
@@ -41,6 +42,7 @@ func parseArgs() *string {
 	threads = flag.String("threads", "5", "Number of threads to be used")
 
 	cat = flag.Bool("cat", false, "Measure with all CAT settings")
+	inverseCat = flag.Bool("cat-inverse", false, "Inverse the CAT masks")
 	catBitChunk = flag.Uint64("catChunk", 2, "Bits changed from one run to the next")
 	resctrlPath = flag.String("resctrl", "/sys/fs/resctrl/", "Root path of the resctrl file system")
 

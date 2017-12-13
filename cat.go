@@ -18,6 +18,9 @@ func generateCatConfigs(minBits uint64, numBits uint64) [][2]uint64 {
 	if *cat {
 		for bits := minBits; bits <= numBits-minBits; bits += *catBitChunk {
 			pairs = append(pairs, [2]uint64{bit.SetFirstN(0, bits), bit.SetLastN(0, bits, numBits)})
+			if *inverseCat {
+				pairs = append(pairs, [2]uint64{bit.SetLastN(0, bits, numBits), bit.SetFirstN(0, bits)})
+			}
 		}
 	}
 
