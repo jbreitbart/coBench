@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	//log.SetLevel(log.DebugLevel)
 
 	inputFile := flag.String("input", "", "Input result file")
 	flag.Parse()
@@ -32,13 +33,13 @@ func main() {
 	}
 
 	indvApps := commands.GenerateIndv(apps)
-	CATDatFiles := createIndvCATDatFiles(indvApps)
-	writeGNUPlotCATIndvFile(indvApps, CATDatFiles)
+	CATDatFiles, perfNames := createIndvCATDatFiles(indvApps)
+	writeGNUPlotCATIndvFile(indvApps, CATDatFiles, perfNames)
 
 	pairs := commands.GeneratePairs(apps)
-	CATCoSchedDatFiles := createCoSchedCATDatFiles(pairs, false)
-	writeGNUPlotCATCoSchedFile(pairs, CATCoSchedDatFiles, false)
+	CATCoSchedDatFiles, perfNames := createCoSchedCATDatFiles(pairs, false)
+	writeGNUPlotCATCoSchedFile(pairs, CATCoSchedDatFiles, perfNames, false)
 
-	CATCoSchedDatFiles = createCoSchedCATDatFiles(pairs, true)
-	writeGNUPlotCATCoSchedFile(pairs, CATCoSchedDatFiles, true)
+	CATCoSchedDatFiles, perfNames = createCoSchedCATDatFiles(pairs, true)
+	writeGNUPlotCATCoSchedFile(pairs, CATCoSchedDatFiles, perfNames, true)
 }

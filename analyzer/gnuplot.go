@@ -2,13 +2,14 @@ package main
 
 import (
 	"io/ioutil"
+	"strconv"
 	"strings"
 
 	"github.com/jbreitbart/coBench/commands"
 	log "github.com/sirupsen/logrus"
 )
 
-func writeGNUPlotCATCoSchedFile(pairs [][2]string, filenames []string, paired bool) {
+func writeGNUPlotCATCoSchedFile(pairs [][2]string, filenames []string, perfNames []string, paired bool) {
 	if len(pairs) == 0 || len(filenames) == 0 {
 		return
 	}
@@ -38,6 +39,7 @@ func writeGNUPlotCATCoSchedFile(pairs [][2]string, filenames []string, paired bo
 		ret += "plot '" + filenames[i]
 		ret += "' using 1:2:3 w yerrorbars ls 1 title '', "
 		ret += "'' using 1:2 with linespoints ls 1 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(pair[0])) + ")', "
+		// TODO fix numbers for when perf output is used!
 		ret += "'' using 1:4:5 w yerrorbars ls 2 title '', "
 		ret += "'' using 1:4 with linespoints ls 2 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(pair[1])) + ")'\n"
 	}
@@ -52,7 +54,7 @@ func writeGNUPlotCATCoSchedFile(pairs [][2]string, filenames []string, paired bo
 	}
 }
 
-func writeGNUPlotCATIndvFile(apps []string, filename []string) {
+func writeGNUPlotCATIndvFile(apps []string, filename []string, perfNames []string) {
 	if len(apps) == 0 {
 		return
 	}
@@ -72,8 +74,14 @@ func writeGNUPlotCATIndvFile(apps []string, filename []string) {
 		ret += "plot '" + filename[i] + "' "
 		ret += "using 1:2:3 w yerrorbars ls 1 title '', "
 		ret += "'' using 1:2 with linespoints ls 1 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(app)) + ")'\n"
-
-		// using 1:($2+$3):($2-$3) with filledcurve fc rgb shadecolor title 'Std. dev.', '' using 1:2 smooth mcspline lw 2 title 'Mean runtime (" + gnuplotEscape(commands.Pretty(app)) + ")'\n"
+		for k, perfName := range perfNames {
+			ret += "plot '" + filename[i] + "' "
+			ret += "using 1:"
+			ret += strconv.Itoa(2*k+4) + ":" + strconv.Itoa(2*k+1+4) + " w yerrorbars ls 1 title '', "
+			ret += "'' using 1:"
+			ret += strconv.Itoa(2*k+4) + " with linespoints ls 1 title 'Ø "
+			ret += gnuplotEscape(perfName) + " (" + gnuplotEscape(commands.Pretty(app)) + ")'\n"
+		}
 	}
 
 	err := ioutil.WriteFile("indv-cat.plot", []byte(ret), 0644)
