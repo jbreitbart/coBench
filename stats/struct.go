@@ -22,6 +22,7 @@ type CommandlineT struct {
 	CATDirs      []string
 	ResctrlPath  string
 	Commands     []string
+	// TODO update!
 }
 
 // DataPerRun is the data we store for every run
