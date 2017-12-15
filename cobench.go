@@ -93,7 +93,7 @@ func individualRuns(commands []string) {
 		printStats(c, stat, catConfig[0])       // TODO and old catConfigs
 	}
 
-	if !*cat {
+	if !*cat || *noIndvSched {
 		return
 	}
 

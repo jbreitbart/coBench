@@ -16,6 +16,7 @@ var cpus [2]string
 var threads *string
 var hermitcore *bool
 var noCoSched *bool
+var noIndvSched *bool
 
 var resctrlPath *string
 var cat *bool
@@ -51,6 +52,7 @@ func parseArgs() *string {
 	varianceDiff = flag.Float64("variance", 100, "Minimum differences in variance required between runs")
 
 	noCoSched = flag.Bool("no-cosched", false, "Disable co-scheduling")
+	noIndvSched = flag.Bool("no-indv", false, "Disable the individual runs")
 
 	perfStat = flag.String("pstat", "", "If set commands are with perf stat -e <param>. Param could be intel_cqm/llc_occupancy/,LLC-load-misses")
 
