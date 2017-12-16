@@ -63,14 +63,16 @@ func createCoSchedCATDatFiles(pairs [][2]string, matchpairs bool) ([]string, []s
 		out += "# L3(0) Runtime(0) Std.Dev.(0) "
 		for _, temp := range extractPerfData(&arbRun) {
 			out += temp.Name + "(0) "
+			out += "Std.Dev " + temp.Name + "(0) "
 			if pair == pairs[0] {
 				perfName = append(perfName, temp.Name)
 			}
 		}
 
-		out += "Runtime(1) Std.Dev(1)"
+		out += "Runtime(1) Std.Dev(1) "
 		for _, temp := range extractPerfData(&arbRun) {
 			out += temp.Name + "(1) "
+			out += "Std.Dev " + temp.Name + "(1) "
 		}
 		out += "\n"
 
@@ -130,7 +132,8 @@ func createIndvCATDatFiles(apps []string) ([]string, []string) {
 
 		out += "# L3 Runtime Std.Dev. "
 		for _, temp := range extractPerfData(&arbRun) {
-			out += temp.Name + " "
+			out += temp.Name
+			out += "Std.Dev " + temp.Name
 			if app == apps[0] {
 				perfName = append(perfName, temp.Name)
 			}

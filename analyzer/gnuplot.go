@@ -14,7 +14,8 @@ func writeGNUPlotCATCoSchedFile(pairs [][2]string, filenames []string, perfNames
 		return
 	}
 	if len(pairs) != len(filenames) {
-		log.Fatalln("Not all apps have CAT data? Not supported atm")
+		log.Errorln("Not all apps have CAT data? Not supported atm. Skip creation of co-scheduling dat files")
+		return
 	}
 
 	log.WithField("paired", paired).Infoln("Creating plot file for co-scheduling CAT runs")
@@ -36,12 +37,25 @@ func writeGNUPlotCATCoSchedFile(pairs [][2]string, filenames []string, perfNames
 
 	for i, pair := range pairs {
 		ret += "set title '" + gnuplotEscape(commands.Pretty(pair[0])) + " + " + gnuplotEscape(commands.Pretty(pair[1])) + "'\n"
-		ret += "plot '" + filenames[i]
-		ret += "' using 1:2:3 w yerrorbars ls 1 title '', "
-		ret += "'' using 1:2 with linespoints ls 1 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(pair[0])) + ")', "
-		// TODO fix numbers for when perf output is used!
-		ret += "'' using 1:4:5 w yerrorbars ls 2 title '', "
-		ret += "'' using 1:4 with linespoints ls 2 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(pair[1])) + ")'\n"
+		ret += "plot '" + filenames[i] + "' "
+		ret += "using 1:2:3 w yerrorbars ls 1 title '', "
+		ret += "'' using 1:2 with linespoints ls 1 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(pair[0])) + ")',"
+		// 6, 7, len==2
+		ret += "'' using 1:" + strconv.Itoa(3+len(perfNames)*2+1) + ":" + strconv.Itoa(3+len(perfNames)*2+2) + " w yerrorbars ls 2 title '', "
+		ret += "'' using 1:" + strconv.Itoa(3+len(perfNames)*2+1) + " with linespoints ls 2 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(pair[1])) + ")'\n"
+
+		for k, perfName := range perfNames {
+			ret += "plot '" + filenames[i] + "' "
+			ret += "using 1:"
+			ret += strconv.Itoa(2*k+4) + ":" + strconv.Itoa(2*k+1+4) + " w yerrorbars ls 1 title '', "
+			ret += "'' using 1:"
+			ret += strconv.Itoa(2*k+4) + " with linespoints ls 1 title 'Ø "
+			ret += gnuplotEscape(perfName) + " (" + gnuplotEscape(commands.Pretty(pair[0])) + ")', "
+
+			ret += "'' using 1:" + strconv.Itoa(2*k+4+len(perfNames)*2+2) + ":" + strconv.Itoa(2*k+4+len(perfNames)*2+3) + " w yerrorbars ls 2 title '', "
+			ret += "'' using 1:" + strconv.Itoa(2*k+4+len(perfNames)*2+2) + " with linespoints ls 2 title 'Ø "
+			ret += gnuplotEscape(perfName) + " (" + gnuplotEscape(commands.Pretty(pair[1])) + ")' \n"
+		}
 	}
 
 	filename := "co-sched-cat.plot"
@@ -59,7 +73,8 @@ func writeGNUPlotCATIndvFile(apps []string, filename []string, perfNames []strin
 		return
 	}
 	if len(apps) != len(filename) {
-		log.Fatalln("Not all apps have CAT data? Not supported atm.")
+		log.Errorln("Not all apps have CAT data? Not supported atm. Skip creation of individual dat files")
+		return
 	}
 
 	log.Infoln("Creating plot file for individual CAT runs.")
