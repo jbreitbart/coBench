@@ -37,14 +37,15 @@ func writeGNUPlotCATCoSchedFile(pairs [][2]string, filenames []string, perfNames
 
 	for i, pair := range pairs {
 		ret += "set title '" + gnuplotEscape(commands.Pretty(pair[0])) + " + " + gnuplotEscape(commands.Pretty(pair[1])) + "'\n"
+		ret += "set ylabel 'Runtime (s)'\n"
 		ret += "plot '" + filenames[i] + "' "
 		ret += "using 1:2:3 w yerrorbars ls 1 title '', "
 		ret += "'' using 1:2 with linespoints ls 1 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(pair[0])) + ")',"
-		// 6, 7, len==2
 		ret += "'' using 1:" + strconv.Itoa(3+len(perfNames)*2+1) + ":" + strconv.Itoa(3+len(perfNames)*2+2) + " w yerrorbars ls 2 title '', "
 		ret += "'' using 1:" + strconv.Itoa(3+len(perfNames)*2+1) + " with linespoints ls 2 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(pair[1])) + ")'\n"
 
 		for k, perfName := range perfNames {
+			ret += "set ylabel '" + gnuplotEscape(perfName) + "'\n"
 			ret += "plot '" + filenames[i] + "' "
 			ret += "using 1:"
 			ret += strconv.Itoa(2*k+4) + ":" + strconv.Itoa(2*k+1+4) + " w yerrorbars ls 1 title '', "
@@ -86,10 +87,12 @@ func writeGNUPlotCATIndvFile(apps []string, filename []string, perfNames []strin
 
 	for i, app := range apps {
 		ret += "set title '" + gnuplotEscape(commands.Pretty(app)) + "'\n"
+		ret += "set ylabel 'Runtime (s)'\n"
 		ret += "plot '" + filename[i] + "' "
 		ret += "using 1:2:3 w yerrorbars ls 1 title '', "
 		ret += "'' using 1:2 with linespoints ls 1 title 'Ø runtime (" + gnuplotEscape(commands.Pretty(app)) + ")'\n"
 		for k, perfName := range perfNames {
+			ret += "set ylabel '" + gnuplotEscape(perfName) + "'\n"
 			ret += "plot '" + filename[i] + "' "
 			ret += "using 1:"
 			ret += strconv.Itoa(2*k+4) + ":" + strconv.Itoa(2*k+1+4) + " w yerrorbars ls 1 title '', "
@@ -112,7 +115,7 @@ func gnuplotHeader() string {
 	ret += "unset x2tics\n"
 	ret += "unset y2tics\n"
 	ret += "set border 3\n"
-	ret += "set ylabel 'Runtime (s)'\n"
+	//ret += "set ylabel 'Runtime (s)'\n"
 
 	ret += "set style line 1 lc rgb '#0060ad' lt 1 lw 2 pt 7 ps 0.1   # --- blue\n"
 	ret += "set style line 2 lc rgb '#dd181f' lt 1 lw 2 pt 5 ps 0.1   # --- red\n"
