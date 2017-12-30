@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"math"
 	"time"
 
 	"github.com/jbreitbart/coBench/stats"
@@ -49,7 +50,7 @@ func parseArgs() *string {
 
 	hermitcore = flag.Bool("hermitcore", false, "Use if you are executing hermitcore binaries")
 
-	varianceDiff = flag.Float64("variance", 100, "Minimum differences in variance required between runs")
+	varianceDiff = flag.Float64("variance", math.NaN(), "Minimum differences in variance required between runs")
 
 	noCoSched = flag.Bool("no-cosched", false, "Disable co-scheduling")
 	noIndvSched = flag.Bool("no-indv", false, "Disable the individual runs")

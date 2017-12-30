@@ -198,7 +198,7 @@ func runCmdMinTimes(cmd *exec.Cmd, min int, wg *sync.WaitGroup, runtime *[]stats
 		// did we run min times?
 		if !completed && i >= min {
 			vari, _ := mstats.Variance(runtimeInSeconds)
-			if math.Abs(vari-oldVariance) <= *varianceDiff {
+			if math.IsNaN(*varianceDiff) || math.Abs(vari-oldVariance) > *varianceDiff {
 				d++
 				completed = true
 			}
