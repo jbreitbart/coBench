@@ -2,8 +2,9 @@ package stats
 
 import (
 	"encoding/json"
-	"math/bits"
+	"math"
 
+	"github.com/montanaflynn/stats"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,148 +22,55 @@ func StoreJSON(raw []byte) error {
 	return json.Unmarshal(raw, &runtimeStats)
 }
 
+func newRuntimeT(CATMask uint64, rawRuntimes []DataPerRun) RuntimeT {
+	var ret RuntimeT
+	ret.update(CATMask, rawRuntimes)
+	return ret
+}
+
+func (run *RuntimeT) update(CATMask uint64, data []DataPerRun) {
+	if run.RawRuntimesByMask == nil {
+		temp := make(map[uint64][]DataPerRun, 1)
+		run.RawRuntimesByMask = &temp
+	}
+
+	if _, exists := (*run.RawRuntimesByMask)[CATMask]; exists {
+		(*run.RawRuntimesByMask)[CATMask] = append((*run.RawRuntimesByMask)[CATMask], data...)
+	} else {
+		(*run.RawRuntimesByMask)[CATMask] = data
+	}
+
+	var runtimeSeconds []float64
+	for _, v := range *run.RawRuntimesByMask {
+		for _, r := range v {
+			runtimeSeconds = append(runtimeSeconds, r.Runtime.Seconds())
+		}
+	}
+
+	var err error
+	run.Mean, err = stats.Mean(runtimeSeconds)
+	if err != nil {
+		log.WithError(err).Errorln("Error while computing mean")
+	}
+	run.Stddev, err = stats.StandardDeviation(runtimeSeconds)
+	if err != nil {
+		log.WithError(err).Errorln("Error while computing stddev")
+	}
+	run.Vari, err = stats.Variance(runtimeSeconds)
+	if err != nil {
+		log.WithError(err).Errorln("Error while computing variance")
+	}
+	run.RuntimeSum, err = stats.Sum(runtimeSeconds)
+	if err != nil {
+		log.WithError(err).Errorln("Error while computing sum")
+	}
+
+	run.Runs = len(runtimeSeconds)
+}
+
 // GetAllApplications returns a string slice containing all applications that are currently stored
 func GetAllApplications() []string {
 	return runtimeStats.Commandline.Commands
-}
-
-// GetCoSchedCATRuntimes returns the runtime of application when running in parallel to cosched with CAT
-func GetCoSchedCATRuntimes(application string, cosched string) *map[int]RuntimeT {
-	temp, exists := runtimeStats.Runtimes[application]
-	if !exists {
-		return nil
-	}
-
-	if (*temp).CoSchedCATRuntimes == nil {
-		return nil
-	}
-
-	ret, exists := (*(*temp).CoSchedCATRuntimes)[cosched]
-	if exists {
-		return &ret
-	}
-
-	return nil
-}
-
-// GetCoSchedRuntimes returns the runtime of application when running in parallel to cosched without CAT
-func GetCoSchedRuntimes(application string, cosched string) *RuntimeT {
-	temp, exists := runtimeStats.Runtimes[application]
-	if !exists {
-		return nil
-	}
-
-	if (*temp).CoSchedRuntimes == nil {
-		return nil
-	}
-
-	ret, exists := (*temp.CoSchedRuntimes)[cosched]
-	if !exists {
-		return nil
-	}
-
-	return &ret
-}
-
-// GetCATRuntimes returns all cat individual runtimes with CAT
-func GetCATRuntimes(application string) *map[int]RuntimeT {
-	_, exists := runtimeStats.Runtimes[application]
-	if exists {
-		return runtimeStats.Runtimes[application].CATRuntimes
-	}
-	return nil
-}
-
-// GetReferenceRuntime returns the individual runtime without CAT
-func GetReferenceRuntime(application string) *RuntimeT {
-	_, exists := runtimeStats.Runtimes[application]
-	if exists {
-		return &runtimeStats.Runtimes[application].ReferenceRuntimes
-	}
-	return nil
-}
-
-func checkIfReferenceExists(application string) {
-	if _, ok := runtimeStats.Runtimes[application]; !ok {
-		log.Fatalln("Error while inserting CAT runtime. Application key does not exist. Call AddReferenceRuntime() first.")
-	}
-}
-
-// AddReferenceRuntime adds the individual runtime without CAT
-func AddReferenceRuntime(application string, data []DataPerRun) RuntimeT {
-	if runtimeStats.Runtimes == nil {
-		runtimeStats.Runtimes = make(map[string]*RuntimePerAppT, 1)
-	}
-
-	var old RuntimeT
-
-	if runtimeStats.Runtimes[application] != nil {
-		old = runtimeStats.Runtimes[application].ReferenceRuntimes
-	}
-	old.update(NoCATMask, data)
-
-	var temp RuntimePerAppT
-	temp.ReferenceRuntimes = old
-	runtimeStats.Runtimes[application] = &temp
-
-	return old
-}
-
-// AddCATRuntime adds the individual runtime with CAT
-func AddCATRuntime(application string, CATMask uint64, data []DataPerRun) RuntimeT {
-	checkIfReferenceExists(application)
-
-	if runtimeStats.Runtimes[application].CATRuntimes == nil {
-		temp := make(map[int]RuntimeT, 1)
-		runtimeStats.Runtimes[application].CATRuntimes = &temp
-	}
-
-	key := bits.OnesCount64(CATMask)
-	old := (*runtimeStats.Runtimes[application].CATRuntimes)[key]
-	old.update(CATMask, data)
-
-	(*runtimeStats.Runtimes[application].CATRuntimes)[key] = old
-
-	return old
-}
-
-// AddCoSchedRuntime adds the co-scheduling runtime of 'application' co-scheduled with coSchedApplication without CAT
-func AddCoSchedRuntime(application string, coSchedApplication string, data []DataPerRun) RuntimeT {
-	checkIfReferenceExists(application)
-
-	if runtimeStats.Runtimes[application].CoSchedRuntimes == nil {
-		temp := make(map[string]RuntimeT, 1)
-		runtimeStats.Runtimes[application].CoSchedRuntimes = &temp
-	}
-
-	old := (*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication]
-	old.update(NoCATMask, data)
-
-	(*runtimeStats.Runtimes[application].CoSchedRuntimes)[coSchedApplication] = old
-
-	return old
-}
-
-// AddCoSchedCATRuntime adds the co-scheduling runtime of 'application' co-scheduled with coSchedApplication with CAT
-func AddCoSchedCATRuntime(application string, coSchedApplication string, CATMask uint64, data []DataPerRun) RuntimeT {
-	checkIfReferenceExists(application)
-
-	if runtimeStats.Runtimes[application].CoSchedCATRuntimes == nil {
-		temp := make(map[string]map[int]RuntimeT, 1)
-		runtimeStats.Runtimes[application].CoSchedCATRuntimes = &temp
-	}
-	if (*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication] == nil {
-		temp := make(map[int]RuntimeT, 1)
-		(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication] = temp
-	}
-
-	key := bits.OnesCount64(CATMask)
-	old := (*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key]
-	old.update(CATMask, data)
-
-	(*runtimeStats.Runtimes[application].CoSchedCATRuntimes)[coSchedApplication][key] = old
-
-	return old
 }
 
 // SetCommandline stores the command line options in the config struct
@@ -177,4 +85,7 @@ func SetCommandline(cat bool, catBitChunk uint64, catDirs []string, cpus [2]stri
 	runtimeStats.Commandline.Runs = runs
 	runtimeStats.Commandline.Threads = threads
 	runtimeStats.Commandline.VarianceDiff = varianceDiff
+	if math.IsNaN(varianceDiff) {
+		runtimeStats.Commandline.VarianceDiff = -1.0
+	}
 }
