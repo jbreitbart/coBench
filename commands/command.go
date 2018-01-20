@@ -70,8 +70,8 @@ func Pretty(app string) string {
 	slash := strings.LastIndex(app, "/")
 	space := strings.Index(app[slash+1:], " ")
 	if space == -1 {
-		space = len(app)
+		space = len(app[slash+1:])
 	}
 
-	return app[slash+1 : space]
+	return app[slash+1 : slash+1+space]
 }
